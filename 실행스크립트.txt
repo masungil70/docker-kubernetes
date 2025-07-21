@@ -180,3 +180,29 @@ docker run -it --name volume_overide  \
 	
 볼륨 폴더로 이동한다	
 cd /home/testdir_2 
+
+
+32. 볼륨 컨테이너 (--volume-from)
+docker run -it --name volumes_from_container \
+--volume-from volume_overide \
+ubuntu:24.04
+
+ls /home/testdir_2
+
+33. 도커 볼륨 (docker volume create --name)
+docker volume create --name myvolume
+
+
+34. 생성된 볼륨 목록  확인한다
+docker volume ls
+
+
+35. 볼륨 이름을 사용하여 컨터이너 생성 
+docker run -it --name myvolume_1  \
+-v myvolume:/root \
+ubuntu:24.04
+
+
+
+
+
