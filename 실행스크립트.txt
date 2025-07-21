@@ -73,7 +73,7 @@ docker rm mycentos
 20. 실행중인 컨테이너 삭제 (rm -f)
 docker rm -f mycentos
 
-21. 모든 컨테이너 삭제 (prune)
+21. 사용되지 않는 모든 컨테이너 삭제 (prune)
 docker container prune
 
 22. 컨테이너 네부에서 네트워크 인터페이스 확인 
@@ -193,7 +193,7 @@ ls /home/testdir_2
 docker volume create --name myvolume
 
 
-34. 생성된 볼륨 목록  확인한다
+34. 생성된 볼륨 목록 확인한다
 docker volume ls
 
 
@@ -202,7 +202,39 @@ docker run -it --name myvolume_1  \
 -v myvolume:/root \
 ubuntu:24.04
 
+36. /root/volume 문서 작성 
+echo hello, volume! >> /root/volume
 
+37. 볼륨 이름을 사용하여 다른 컨터이너(myvolume_2) 생성 
+docker run -it --name myvolume_2  \
+-v myvolume:/root \
+ubuntu:24.04
+
+38. myvolume_1 컨터이너에서 생성한 문서를 다른 컨터이너(myvolume_2)에서 확인 보기
+cat  /root/volume
+
+39. myvolume 볼륨 상세 정보 확인하기 (저장된 폴더 위치 확인 : Mountpoint)
+docker inspect --type volume myvolume
+
+40. host 장비에서 myvolume의 위치 확인 
+ls /var/lib/docker/volumes/myvolume/_data
+
+41. host 장비에서 myvolume에 생성된 volume 파일 읽기
+cat /var/lib/docker/volumes/myvolume/_data/volumn
+
+42. -v 옵션으로 공유할 폴더 자동 생성 
+docker run -it --name volume_auto  \
+-v /root \
+ubuntu:24.04
+
+43. 생성된 볼륨 목록 확인한다(16진수로 생성된 볼륨명 확인)
+docker volume ls
+
+44. 사용되지 않는 모든 볼륨 삭제 (prune)
+docker volume prune
+
+45. 네트웩 인터페이스 확인
+ifconfig
 
 
 
