@@ -1,0 +1,182 @@
+docker 설치 스크립트 
+
+
+1. 우분투 시스템 패키지 업데이트
+sudo apt-get update
+
+
+2. 필요한 패키지 설치
+sudo apt-get install apt-transport-https ca-certificates curl gnupg-agent software-properties-common
+ 
+
+3. Docker의 공식 GPG키를 추가
+curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo apt-key add -
+ 
+
+4. Docker의 공식 apt 저장소를 추가
+sudo add-apt-repository "deb [arch=amd64] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable"
+ 
+
+5. 시스템 패키지 업데이트
+sudo apt-get update
+
+
+6. Docker 설치
+sudo apt-get install docker-ce docker-ce-cli containerd.io
+ 
+
+7. Docker가 설치 확인
+7-1 도커 실행상태 확인
+sudo systemctl status docker
+
+
+8.sudo 권한 없이 docker 사용 
+sudo usermod -aG docker $USER
+newgrp docker 
+
+
+9. docket 버전 확인 
+docker -v
+
+10. docker로 우분트 24.04 실행 
+docker run -it ubuntu:24.04
+
+11. docker로 centos 7 이미지 다운로드 
+docker pull centos:7
+
+12. docker 이미지 목록 확인
+docker images
+
+13. 컨테이너 생성(create) 
+docker create -it --name mycentos centos:7
+
+14.  컨테이너 실행(start) 
+docker start mycentos 
+또는 
+docker start [CONTAINER ID]  
+
+15. 컨테이너 안으로 들어가는 법 
+docker attach mycentos
+
+16. 컨테이너 목록 확인 (실행 중인것만 대상으로 함)
+docker ps 
+
+17. 컨테이너 목록 확인 (모든 상태(생성, 시작, 멈춤) 대상으로 함)
+docker ps -a
+
+18. 컨테이너 종료 (stop)
+docker stop mycentos
+
+19. 컨테이너 삭제 (rm)
+docker rm mycentos
+
+20. 실행중인 컨테이너 삭제 (rm -f)
+docker rm -f mycentos
+
+21. 모든 컨테이너 삭제 (prune)
+docker container prune
+
+22. 컨테이너 네부에서 네트워크 인터페이스 확인 
+docker run -it --name network_test ubuntu:24.04
+
+22.1 저장소 정보 업데이트 
+apt update -y 
+
+22.2 네트워크 유틸리티 설치 
+apt install net-utils -y 
+
+22.3 네트워크 인터페이스 확인 
+ifconfig 
+
+
+23. ubuntu24.04 에 아파치 웹서버 설치 후 외부에 노출하기 
+docker run -it --name mywebserver -p 80:80 ubuntu:24.04
+
+아파치 설치 
+apt update -y 
+apt install apache2 -y 
+
+아파치 서비스 상태 확인
+service apache2 status
+
+아파치 서비스 실행
+service apache2 start
+
+아파치 서비스 실행 확인 (host pc의 아이피 : 192.168.154.131)
+브라우저 주소창에 host pc의 아이피 
+http://192.168.154.131
+또는 
+curl http://192.168.154.131
+
+
+
+24. mysql과 wordpress 연동 
+24.1 mysql 컨테이너로 실행 
+docker run -d --name wordpressdb -e MYSQL_ROOT_PASSWORD=password -e MYSQL_DATABASE=wordpress mysql:5.7
+
+24.2 wordpress 컨테이너로 실행 
+docker run -d --name wordpress -e WORDPRESS_DB_HOST=mysql -e WORDPRESS_DB_USER=root -e WORDPRESS_DB_PASSWORD=password --link wordpressdb:mysql -p 80 wordpress 
+
+
+25. 컨테이너 실행 로그 확인 
+docker logs wordpressdb
+또는 
+docker logs [CONTAINER ID]  
+
+26. mysqldb server 컨테이너안에서 mysql 클라이언트 연결 
+docker exec -it wordpressdb bash
+mysql -u root -p
+
+또는 
+docker exec -it wordpressdb mysql -u root -p
+
+
+27. 호스트 볼륨 공유 하여 mysql과 wordpress 연동 
+27.1 mysql 컨테이너로 실행 
+docker run -d --name wordpressdb_hostvolume \
+	-e MYSQL_ROOT_PASSWORD=password \
+	-e MYSQL_DATABASE=wordpress \
+	-v /home/wordpress_db:/var/lib/mysql \
+	mysql:5.7
+
+27.2 wordpress 컨테이너로 실행 
+docker run -d --name wordpress_hostvolume \
+	-e WORDPRESS_DB_HOST=mysql \
+	-e WORDPRESS_DB_USER=root \
+	-e WORDPRESS_DB_PASSWORD=password \
+	--link wordpressdb_hostvolume:mysql \
+	-p 80 \
+	wordpress 
+
+
+28. 컨테이너 내부에 /home/testdir_2/test 파일을 생성 
+docker run -it --name volume_test ubuntu:24.04
+
+home으로 경로를 이동한다 
+cd home
+
+testdir_2 폴더 생성한다 
+mkdir testdir_2
+
+test 파일을 생성한다 
+echo Hello World > test
+
+test 파일의 내용을 확인한다
+cat test
+
+29. 실행중인 컨테이너를 로컬 저장소에 저장하기(commit)
+docker commit -m "메시지" [컨테이너명] [저장이미지명]
+docker commit -m "test 파일 생성" volume_test volume_test_image 
+
+
+30. volume_test 컨테이너를 종료한다 (컨테이너에서 생성한 파일 사라짐)
+docker stop volume_test
+docker rm volume_test
+
+31. mysql 볼륨 폴더를 volume_test_image에 연결하여 실행하기 
+docker run -it --name volume_overide  \
+	-v /home/wordpress_db:/home/testdir_2  \
+	volume_test_image
+	
+볼륨 폴더로 이동한다	
+cd /home/testdir_2 
