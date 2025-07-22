@@ -319,5 +319,145 @@ ifconfig
 
 
 65. 브리지 네트웩과 --net-alias 
+docker rm -f $(docker ps -a -q) #모든 컨테이너 종료 후 제거 
+
 --net-alias 옵션을 함께 쓰면 특정 호스트 이름으로 컨터이너 여러 개에 접근할 수 있음
+docker run -dit --name network_alias_container1 --net mybridge --net-alias kosa ubuntu:24.04
+docker run -dit --name network_alias_container2 --net mybridge --net-alias kosa ubuntu:24.04
+docker run -dit --name network_alias_container3 --net mybridge --net-alias kosa ubuntu:24.04
+
+각 컨터이너 IP 확인 
+docker inspect network_alias_container1 | grep id # network_alias_container1의 IP 확인 
+docker inspect network_alias_container1 network_alias_container2 network_alias_container3 | grep id 
+docker inspect $(docker ps -a -q) | grep IP # 모든 컨테이너의 IP 확인 
+
+3개의 컨터이너에 접근할 컨테이너 생성 
+docker run -it --name network_alias_ping --net mybridge ubuntu:24.04
+
+ping 안될때 아래 명령 실행 
+apt update
+apt install iputils-ping -y
+
+3개의 컨터이너를 host(kosa)이름으로 ping 해 본다 
+ping -c 1 kosa #3회 실행한다 
+
+#실전 예제 
+전체 구조
+
+load-balancer-fastapi/
+├── docker-start.sh
+├── docker-stop.sh
+├── docker-rm.sh
+├── docker-build.sh
+├── nginx/
+│   └── nginx.conf
+└── app/
+     ├── Dockerfile
+     └── main.py
+
+◆ 폴더 생성 
+mkdir load-balancer-fastapi
+mkdir load-balancer-fastapi/nginx
+mkdir load-balancer-fastapi/app
+
+◆ main.py 파일 생성
+vi load-balancer-fastapi/app/main.py
+
+from fastapi import FastAPI
+import socket
+
+app = FastAPI()
+
+@app.get("/")
+def read_root():
+    return {
+        "message": "Hello from FastAPI",
+        "host": socket.gethostname()
+    }
+
+
+◆ Dockerfile 파일 생성
+vi load-balancer-fastapi/app/Dockerfile
+
+FROM tiangolo/uvicorn-gunicorn-fastapi:python3.9
+
+COPY ./main.py /app/main.py
+
+◆ nginx.conf 파일 생성
+vi load-balancer-fastapi/nginx/nginx.conf
+
+events {}
+
+http {
+    upstream backend {
+        server app:8000;
+    }
+
+    server {
+        listen 80;
+
+        location / {
+            proxy_pass http://backend;
+        }
+    }
+}
+
+◆ docker 브리지 네트워크 생성 
+docker network create my-net
+
+◆ fastAPI를 사용한 웹 응용프로그램 이미지 생성 
+vi  load-balancer-fastapi/docker-build.sh
+
+cd load-balancer-fastapi
+docker build -q ./app
+cd ..
+
+
+◆ 컨테이너 실행 스크립트(docker-start.sh)
+vi load-balancer-fastapi/docker-start.sh
+
+# web1 실행 (alias = app)
+docker run -d --rm \
+  --name web1 \
+  --net my-net \
+  --net-alias app \
+  app
+
+# web2 실행 (alias = app)
+docker run -d --rm \
+  --name web2 \
+  --net my-net \
+  --net-alias app \
+  app
+
+# nginx 로드밸런서 실행
+docker run -d --rm \
+  --name lb \
+  --net my-net \
+  -v nginx/nginx.conf:/etc/nginx/nginx.conf:ro \
+  -p 8080:80 \
+  nginx
+
+◆ 컨테이너 종료 스크립트(docker-stop.sh)
+vi load-balancer-fastapi/docker-stop.sh
+# web1, web2, lb 종료 
+docker stop web1 web2 lb
+
+◆ 컨테이너 제거 스크립트(docker-rm.sh)
+vi load-balancer-fastapi/docker-rm.sh
+# web1, web2, lb 종료 
+docker rm web1 web2 lb
+docker network rm my-net
+
+◆ 스크립트 실행 권한 설정 
+chmod +x load-balancer-fastapi/docker*
+
+◆ 이미지 생성 
+./load-balancer-fastapi/docker-build.sh
+
+◆ 컨테이너 실행
+./load-balancer-fastapi/docker-start.sh
+
+◆ 실행 테스트 (host에서 실행)
+curl http://localhost:8080
 
