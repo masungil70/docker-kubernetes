@@ -83,7 +83,7 @@ docker run -it --name network_test ubuntu:24.04
 apt update -y 
 
 22.2 네트워크 유틸리티 설치 
-apt install net-utils -y 
+apt install net-tools -y 
 
 22.3 네트워크 인터페이스 확인 
 ifconfig 
@@ -235,6 +235,89 @@ docker volume prune
 
 45. 네트웩 인터페이스 확인
 ifconfig
+or 
+ip addr
+
+46. ifconfig 명령이 실행되지 않을 때 아래 명령 실행
+sudo apt install net-tools
+
+47. ip addr 명령이 실행되지 않을 때 아래 명령 실행
+sudo apt install iproute2
+
+48. docker0 브리지와 바인딩된 네트웩 인터페이스 확인 
+brctl show docker0     
+
+49. docker 네트웩 목록 확인 및 상세정보 
+docker network ls              #docker 네트웩 목록 
+docker network inspect bridge  #브리지의 상세 정보 
+docker inspect bridge          #브리지의 상세 정보 
+
+50. 브리지 네트웩 생성 
+docker network create --driver bridge mybridge #mybridge 이름로 bridge 네트웩 드라이버 생성
+
+51. 생성된 브리지 네트웩 상세 정보확읹 
+docker inspect mybridge
+
+52. 생성된 브리지 네트웩을 사용하여 컨테이너 생성 (--net mybridge)
+docker run -it --name mynetwork_container \
+--net mybridge \
+ubuntu:24.04
+
+53. docker 내부에서 네트웩 정보 확인 
+apt update
+apt install net-tools -y
+ifconfig 
+
+54. host에서 container에 연결된 network 연결 및 해제 (host에 진행)
+docker network disconnect mybridge mynetwork_container   #연결 해제 
+
+55. 연결 해제된 상태 확인 (docker 내부에서 실행)
+ifconfig 
+
+56. host에서 container에 연결된 network 연결 및 해제 (host에 진행)
+docker network connect mybridge mynetwork_container   #연결 
+
+57. 연결 해제된 상태 확인 (docker 내부에서 실행)
+ifconfig 
+
+58. 브리지 네트웩 상세 설정하여 생성 
+docker network create --driver=bridge \
+--subnet=172.72.0.0/16 \
+--ip-range=172.72.0.0/24 \
+--gateway=172.72.0.1 \
+my_custom_network 
+
+59. 생성된 네트웩 확인 
+docker network ls
+
+60. host 네트웩 사용하는 방법(host 장비의 ip를 그대로 사용)
+docker run -it --name network_host \
+--net host \
+ubuntu:24.04
+
+61. 생성된 네트웩 확인 
+apt update
+apt install net-tools -y
+ifconfig 
+
+62. 논 네트웩 사용하는 방법(네트웩 사용하지 않음)
+docker run -it --name network_host \
+--net none \
+ubuntu:24.04
+
+63. 컨터이너 네트웩(컨터이너에서 사용하는 네트웩을 공유함)
+docker run -d --name network_conainer_1 ubuntu:24.04
+
+docker run -it --name network_conainer_2 \
+--net container:network_conainer_1 \
+ubuntu:24.04
+
+64. 각 컨터이너안에서 생성된 네트웩 확인(ip 주소,  물리 맥 어드레스 확인)
+apt update
+apt install net-tools -y
+ifconfig 
 
 
+65. 브리지 네트웩과 --net-alias 
+--net-alias 옵션을 함께 쓰면 특정 호스트 이름으로 컨터이너 여러 개에 접근할 수 있음
 
