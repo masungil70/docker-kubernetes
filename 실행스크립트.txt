@@ -1,145 +1,138 @@
 docker 설치 스크립트 
 
 
-1. 우분투 시스템 패키지 업데이트
+#1. 우분투 시스템 패키지 업데이트
 sudo apt-get update
 
-
-2. 필요한 패키지 설치
+#2. 필요한 패키지 설치
 sudo apt-get install apt-transport-https ca-certificates curl gnupg-agent software-properties-common
- 
 
-3. Docker의 공식 GPG키를 추가
+#3. Docker의 공식 GPG키를 추가
 curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo apt-key add -
- 
 
-4. Docker의 공식 apt 저장소를 추가
+#4. Docker의 공식 apt 저장소를 추가
 sudo add-apt-repository "deb [arch=amd64] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable"
- 
 
-5. 시스템 패키지 업데이트
+#5. 시스템 패키지 업데이트
 sudo apt-get update
 
-
-6. Docker 설치
+#6. Docker 설치
 sudo apt-get install docker-ce docker-ce-cli containerd.io
- 
 
-7. Docker가 설치 확인
-7-1 도커 실행상태 확인
+#7. 도커 실행상태 확인
 sudo systemctl status docker
 
-
-8.sudo 권한 없이 docker 사용 
+#8.sudo 권한 없이 docker 사용 하기
 sudo usermod -aG docker $USER
+
+#로그아웃 하지 않고 docker 명령사용 할 수 있음
 newgrp docker 
 
-
-9. docket 버전 확인 
+#9. docket 버전 확인 
 docker -v
 
-10. docker로 우분트 24.04 실행 
-docker run -it ubuntu:24.04
-
-11. docker로 centos 7 이미지 다운로드 
+#10. docker hub에서 centos 7 이미지 다운로드 하여 로컬 저정소에 저장한다 
 docker pull centos:7
 
-12. docker 이미지 목록 확인
-docker images
-
-13. 컨테이너 생성(create) 
+#11. 컨테이너 생성(create) 
+#컨테이너 이름 : mycentos
 docker create -it --name mycentos centos:7
 
-14.  컨테이너 실행(start) 
+#12.  컨테이너 실행(start) 
 docker start mycentos 
-또는 
+#또는 
 docker start [CONTAINER ID]  
 
-15. 컨테이너 안으로 들어가는 법 
+#13. 컨테이너 안으로 들어가는 법 
 docker attach mycentos
 
-16. 컨테이너 목록 확인 (실행 중인것만 대상으로 함)
+#14. docker hub에서 우분트 24.04 이미지 다운로드(로걸 저장소) 후 실행 (-t : 터미널 모드, -i : 키보드 입력하는 대화형 모드)
+docker run -it ubuntu:24.04
+
+#15. docker 로걸 저정소에 등록된 이미지 목록 확인
+docker images
+
+#16. 컨테이너 목록 확인 (실행 중인것만 대상으로 함)
 docker ps 
 
-17. 컨테이너 목록 확인 (모든 상태(생성, 시작, 멈춤) 대상으로 함)
+#17. 컨테이너 목록 확인 (모든 상태(생성, 시작, 멈춤) 대상으로 함)
 docker ps -a
 
-18. 컨테이너 종료 (stop)
+#18. 컨테이너 종료 (stop)
 docker stop mycentos
 
-19. 컨테이너 삭제 (rm)
+#19. 컨테이너 삭제 (rm)
 docker rm mycentos
 
-20. 실행중인 컨테이너 삭제 (rm -f)
+#20. 실행중인 컨테이너 삭제 (rm -f)
 docker rm -f mycentos
 
-21. 사용되지 않는 모든 컨테이너 삭제 (prune)
+#21. 사용되지 않는 모든 컨테이너 삭제 (prune)
 docker container prune
 
-22. 컨테이너 네부에서 네트워크 인터페이스 확인 
+#22. 컨테이너 내부에서 네트워크 인터페이스 확인 
 docker run -it --name network_test ubuntu:24.04
 
-22.1 저장소 정보 업데이트 
+#22.1 저장소 정보 업데이트 
 apt update -y 
 
-22.2 네트워크 유틸리티 설치 
+#22.2 네트워크 유틸리티 설치 
 apt install net-tools -y 
 
-22.3 네트워크 인터페이스 확인 
+#22.3 네트워크 인터페이스 확인 
 ifconfig 
 
 
-23. ubuntu24.04 에 아파치 웹서버 설치 후 외부에 노출하기 
+#23. ubuntu24.04 에 아파치 웹서버 설치 후 외부에 노출하기 
 docker run -it --name mywebserver -p 80:80 ubuntu:24.04
 
-아파치 설치 
+#아파치 설치 
 apt update -y 
 apt install apache2 -y 
 
-아파치 서비스 상태 확인
+#아파치 서비스 상태 확인
 service apache2 status
 
-아파치 서비스 실행
+#아파치 서비스 실행
 service apache2 start
 
-아파치 서비스 실행 확인 (host pc의 아이피 : 192.168.154.131)
-브라우저 주소창에 host pc의 아이피 
+#아파치 서비스 실행 확인 (host pc의 아이피 : 192.168.154.131)
+#브라우저 주소창에 host pc의 아이피 
 http://192.168.154.131
-또는 
+#또는 
 curl http://192.168.154.131
 
 
 
-24. mysql과 wordpress 연동 
-24.1 mysql 컨테이너로 실행 
+#24. mysql과 wordpress 연동 
+#24.1 mysql 컨테이너로 실행 
 docker run -d --name wordpressdb -e MYSQL_ROOT_PASSWORD=password -e MYSQL_DATABASE=wordpress mysql:5.7
 
-24.2 wordpress 컨테이너로 실행 
+#24.2 wordpress 컨테이너로 실행 
 docker run -d --name wordpress -e WORDPRESS_DB_HOST=mysql -e WORDPRESS_DB_USER=root -e WORDPRESS_DB_PASSWORD=password --link wordpressdb:mysql -p 80 wordpress 
 
 
-25. 컨테이너 실행 로그 확인 
+#25. 컨테이너 실행 로그 확인 
 docker logs wordpressdb
-또는 
+#또는 
 docker logs [CONTAINER ID]  
 
-26. mysqldb server 컨테이너안에서 mysql 클라이언트 연결 
+#26. mysqldb server 컨테이너안에서 mysql 클라이언트 연결 
 docker exec -it wordpressdb bash
 mysql -u root -p
-
-또는 
+#또는 
 docker exec -it wordpressdb mysql -u root -p
 
 
-27. 호스트 볼륨 공유 하여 mysql과 wordpress 연동 
-27.1 mysql 컨테이너로 실행 
+#27. 호스트 볼륨 공유 하여 mysql과 wordpress 연동 
+#27.1 mysql 컨테이너로 실행 
 docker run -d --name wordpressdb_hostvolume \
 	-e MYSQL_ROOT_PASSWORD=password \
 	-e MYSQL_DATABASE=wordpress \
 	-v /home/wordpress_db:/var/lib/mysql \
 	mysql:5.7
 
-27.2 wordpress 컨테이너로 실행 
+#27.2 wordpress 컨테이너로 실행 
 docker run -d --name wordpress_hostvolume \
 	-e WORDPRESS_DB_HOST=mysql \
 	-e WORDPRESS_DB_USER=root \
@@ -149,219 +142,218 @@ docker run -d --name wordpress_hostvolume \
 	wordpress 
 
 
-28. 컨테이너 내부에 /home/testdir_2/test 파일을 생성 
+#28. 컨테이너 내부에 /home/testdir_2/test 파일을 생성 
 docker run -it --name volume_test ubuntu:24.04
 
-home으로 경로를 이동한다 
+#home으로 경로를 이동한다 
 cd home
 
-testdir_2 폴더 생성한다 
+#testdir_2 폴더 생성한다 
 mkdir testdir_2
 
-test 파일을 생성한다 
+#test 파일을 생성한다 
 echo Hello World > test
 
-test 파일의 내용을 확인한다
-cat test
+#test 파일의 내용을 확인한다
+#cat test
 
-29. 실행중인 컨테이너를 로컬 저장소에 저장하기(commit)
-docker commit -m "메시지" [컨테이너명] [저장이미지명]
+#29. 실행중인 컨테이너를 로컬 저장소에 저장하기(commit)
+#docker commit -m "메시지" [컨테이너명] [저장이미지명]
 docker commit -m "test 파일 생성" volume_test volume_test_image 
 
 
-30. volume_test 컨테이너를 종료한다 (컨테이너에서 생성한 파일 사라짐)
+#30. volume_test 컨테이너를 종료한다 (컨테이너에서 생성한 파일 사라짐)
 docker stop volume_test
 docker rm volume_test
 
-31. mysql 볼륨 폴더를 volume_test_image에 연결하여 실행하기 
+#31. mysql 볼륨 폴더를 volume_test_image에 연결하여 실행하기 
 docker run -it --name volume_overide  \
 	-v /home/wordpress_db:/home/testdir_2  \
 	volume_test_image
 	
-볼륨 폴더로 이동한다	
+#볼륨 폴더로 이동한다	
 cd /home/testdir_2 
 
 
-32. 볼륨 컨테이너 (--volume-from)
+#32. 볼륨 컨테이너 (--volume-from)
 docker run -it --name volumes_from_container \
---volume-from volume_overide \
-ubuntu:24.04
-
+   --volume-from volume_overide \
+   ubuntu:24.04
+#경로 변경
 ls /home/testdir_2
 
-33. 도커 볼륨 (docker volume create --name)
+#33. 도커 볼륨 (docker volume create --name)
 docker volume create --name myvolume
 
-
-34. 생성된 볼륨 목록 확인한다
+#34. 생성된 볼륨 목록 확인한다
 docker volume ls
 
 
-35. 볼륨 이름을 사용하여 컨터이너 생성 
+#35. 볼륨 이름을 사용하여 컨터이너 생성 
 docker run -it --name myvolume_1  \
--v myvolume:/root \
-ubuntu:24.04
+  -v myvolume:/root \
+  ubuntu:24.04
 
-36. /root/volume 문서 작성 
+#36. /root/volume 문서 작성 
 echo hello, volume! >> /root/volume
 
-37. 볼륨 이름을 사용하여 다른 컨터이너(myvolume_2) 생성 
+#37. 볼륨 이름을 사용하여 다른 컨터이너(myvolume_2) 생성 
 docker run -it --name myvolume_2  \
--v myvolume:/root \
-ubuntu:24.04
+  -v myvolume:/root \
+  ubuntu:24.04
 
-38. myvolume_1 컨터이너에서 생성한 문서를 다른 컨터이너(myvolume_2)에서 확인 보기
+#38. myvolume_1 컨터이너에서 생성한 문서를 다른 컨터이너(myvolume_2)에서 확인 보기
 cat  /root/volume
 
-39. myvolume 볼륨 상세 정보 확인하기 (저장된 폴더 위치 확인 : Mountpoint)
+#39. myvolume 볼륨 상세 정보 확인하기 (저장된 폴더 위치 확인 : Mountpoint)
 docker inspect --type volume myvolume
 
-40. host 장비에서 myvolume의 위치 확인 
+#40. host 장비에서 myvolume의 위치 확인 
 ls /var/lib/docker/volumes/myvolume/_data
 
-41. host 장비에서 myvolume에 생성된 volume 파일 읽기
+#41. host 장비에서 myvolume에 생성된 volume 파일 읽기
 cat /var/lib/docker/volumes/myvolume/_data/volumn
 
-42. -v 옵션으로 공유할 폴더 자동 생성 
+#42. -v 옵션으로 공유할 폴더 자동 생성 
 docker run -it --name volume_auto  \
--v /root \
-ubuntu:24.04
+  -v /root \
+  ubuntu:24.04
 
-43. 생성된 볼륨 목록 확인한다(16진수로 생성된 볼륨명 확인)
+#43. 생성된 볼륨 목록 확인한다(16진수로 생성된 볼륨명 확인)
 docker volume ls
 
-44. 사용되지 않는 모든 볼륨 삭제 (prune)
+#44. 사용되지 않는 모든 볼륨 삭제 (prune)
 docker volume prune
 
-45. 네트웩 인터페이스 확인
+#45. 네트웩 인터페이스 확인
 ifconfig
-or 
+#또는  
 ip addr
 
-46. ifconfig 명령이 실행되지 않을 때 아래 명령 실행
+#46. ifconfig 명령이 실행되지 않을 때 아래 명령 실행
 sudo apt install net-tools
 
-47. ip addr 명령이 실행되지 않을 때 아래 명령 실행
+#47. ip addr 명령이 실행되지 않을 때 아래 명령 실행
 sudo apt install iproute2
 
-48. docker0 브리지와 바인딩된 네트웩 인터페이스 확인 
+#48. docker0 브리지와 바인딩된 네트웩 인터페이스 확인 
 brctl show docker0     
 
-49. docker 네트웩 목록 확인 및 상세정보 
+#49. docker 네트웩 목록 확인 및 상세정보 
 docker network ls              #docker 네트웩 목록 
 docker network inspect bridge  #브리지의 상세 정보 
 docker inspect bridge          #브리지의 상세 정보 
 
-50. 브리지 네트웩 생성 
+#50. 브리지 네트웩 생성 
 docker network create --driver bridge mybridge #mybridge 이름로 bridge 네트웩 드라이버 생성
 
-51. 생성된 브리지 네트웩 상세 정보확읹 
+#51. 생성된 브리지 네트웩 상세 정보확읹 
 docker inspect mybridge
 
-52. 생성된 브리지 네트웩을 사용하여 컨테이너 생성 (--net mybridge)
+#52. 생성된 브리지 네트웩을 사용하여 컨테이너 생성 (--net mybridge)
 docker run -it --name mynetwork_container \
---net mybridge \
-ubuntu:24.04
+  --net mybridge \
+  ubuntu:24.04
 
-53. docker 내부에서 네트웩 정보 확인 
+#53. docker 내부에서 네트웩 정보 확인 
 apt update
 apt install net-tools -y
 ifconfig 
 
-54. host에서 container에 연결된 network 연결 및 해제 (host에 진행)
+#54. host에서 container에 연결된 network 연결 및 해제 (host에 진행)
 docker network disconnect mybridge mynetwork_container   #연결 해제 
 
-55. 연결 해제된 상태 확인 (docker 내부에서 실행)
+#55. 연결 해제된 상태 확인 (docker 내부에서 실행)
 ifconfig 
 
-56. host에서 container에 연결된 network 연결 및 해제 (host에 진행)
+#56. host에서 container에 연결된 network 연결 및 해제 (host에 진행)
 docker network connect mybridge mynetwork_container   #연결 
 
-57. 연결 해제된 상태 확인 (docker 내부에서 실행)
+#57. 연결 해제된 상태 확인 (docker 내부에서 실행)
 ifconfig 
 
-58. 브리지 네트웩 상세 설정하여 생성 
+#58. 브리지 네트웩 상세 설정하여 생성 
 docker network create --driver=bridge \
---subnet=172.72.0.0/16 \
---ip-range=172.72.0.0/24 \
---gateway=172.72.0.1 \
-my_custom_network 
+  --subnet=172.72.0.0/16 \
+  --ip-range=172.72.0.0/24 \
+  #--gateway=172.72.0.1 \
+  #my_custom_network 
 
-59. 생성된 네트웩 확인 
+#59. 생성된 네트웩 확인 
 docker network ls
 
-60. host 네트웩 사용하는 방법(host 장비의 ip를 그대로 사용)
+#60. host 네트웩 사용하는 방법(host 장비의 ip를 그대로 사용)
 docker run -it --name network_host \
---net host \
-ubuntu:24.04
+  --net host \
+  ubuntu:24.04
 
-61. 생성된 네트웩 확인 
+#61. 생성된 네트웩 확인 
 apt update
 apt install net-tools -y
 ifconfig 
 
-62. 논 네트웩 사용하는 방법(네트웩 사용하지 않음)
+#62. 논 네트웩 사용하는 방법(네트웩 사용하지 않음)
 docker run -it --name network_host \
---net none \
-ubuntu:24.04
+  --net none \
+  ubuntu:24.04
 
-63. 컨터이너 네트웩(컨터이너에서 사용하는 네트웩을 공유함)
+#63. 컨터이너 네트웩(컨터이너에서 사용하는 네트웩을 다른 컨터이너에서 공유함)
 docker run -d --name network_conainer_1 ubuntu:24.04
 
 docker run -it --name network_conainer_2 \
---net container:network_conainer_1 \
-ubuntu:24.04
+  --net container:network_conainer_1 \
+  ubuntu:24.04
 
-64. 각 컨터이너안에서 생성된 네트웩 확인(ip 주소,  물리 맥 어드레스 확인)
+#64. 각 컨터이너안에서 생성된 네트웩 확인(ip 주소,  물리 맥 어드레스 확인)
 apt update
 apt install net-tools -y
 ifconfig 
 
 
-65. 브리지 네트웩과 --net-alias 
+#65. 브리지 네트웩과 --net-alias 
 docker rm -f $(docker ps -a -q) #모든 컨테이너 종료 후 제거 
 
---net-alias 옵션을 함께 쓰면 특정 호스트 이름으로 컨터이너 여러 개에 접근할 수 있음
+#--net-alias 옵션을 함께 쓰면 특정 호스트 이름으로 컨터이너 여러 개에 접근할 수 있음
 docker run -dit --name network_alias_container1 --net mybridge --net-alias kosa ubuntu:24.04
 docker run -dit --name network_alias_container2 --net mybridge --net-alias kosa ubuntu:24.04
 docker run -dit --name network_alias_container3 --net mybridge --net-alias kosa ubuntu:24.04
 
-각 컨터이너 IP 확인 
+#각 컨터이너 IP 확인 
 docker inspect network_alias_container1 | grep id # network_alias_container1의 IP 확인 
 docker inspect network_alias_container1 network_alias_container2 network_alias_container3 | grep id 
 docker inspect $(docker ps -a -q) | grep IP # 모든 컨테이너의 IP 확인 
 
-3개의 컨터이너에 접근할 컨테이너 생성 
+#3개의 컨터이너에 접근할 컨테이너 생성 
 docker run -it --name network_alias_ping --net mybridge ubuntu:24.04
 
-ping 안될때 아래 명령 실행 
+#ping 안될때 아래 명령 실행 
 apt update
 apt install iputils-ping -y
 
-3개의 컨터이너를 host(kosa)이름으로 ping 해 본다 
+#3개의 컨터이너를 host(kosa)이름으로 ping 해 본다 
 ping -c 1 kosa #3회 실행한다 
 
 #실전 예제 
-전체 구조
+#전체 구조
+#
+#load-balancer-fastapi/
+#├── docker-start.sh
+#├── docker-stop.sh
+#├── docker-rm.sh
+#├── docker-build.sh
+#├── nginx/
+#│   └── nginx.conf
+#└── app/
+#     ├── Dockerfile
+#     └── main.py
 
-load-balancer-fastapi/
-├── docker-start.sh
-├── docker-stop.sh
-├── docker-rm.sh
-├── docker-build.sh
-├── nginx/
-│   └── nginx.conf
-└── app/
-     ├── Dockerfile
-     └── main.py
-
-◆ 폴더 생성 
+# 폴더 생성 
 mkdir load-balancer-fastapi
 mkdir load-balancer-fastapi/nginx
 mkdir load-balancer-fastapi/app
 
-◆ main.py 파일 생성
-vi load-balancer-fastapi/app/main.py
+# main.py 파일 생성
+cat <<EOF > load-balancer-fastapi/app/main.py
 
 from fastapi import FastAPI
 import socket
@@ -374,23 +366,25 @@ def read_root():
         "message": "Hello from FastAPI",
         "host": socket.gethostname()
     }
+EOF
 
-
-◆ Dockerfile 파일 생성
-vi load-balancer-fastapi/app/Dockerfile
+# Dockerfile 파일 생성
+cat <<EOF > load-balancer-fastapi/app/Dockerfile
 
 FROM tiangolo/uvicorn-gunicorn-fastapi:python3.9
 
 COPY ./main.py /app/main.py
 
-◆ nginx.conf 파일 생성
-vi load-balancer-fastapi/nginx/nginx.conf
+EOF
+
+# nginx.conf 파일 생성
+cat <<EOF > load-balancer-fastapi/nginx/nginx.conf
 
 events {}
 
 http {
     upstream backend {
-        server app:8000;
+        server app:80;
     }
 
     server {
@@ -401,20 +395,25 @@ http {
         }
     }
 }
+EOF
 
-◆ docker 브리지 네트워크 생성 
-docker network create my-net
 
-◆ fastAPI를 사용한 웹 응용프로그램 이미지 생성 
-vi  load-balancer-fastapi/docker-build.sh
+# fastAPI를 사용한 웹 응용프로그램 이미지 생성 
+cat <<EOF > load-balancer-fastapi/docker-build.sh
 
 cd load-balancer-fastapi
-docker build -q ./app
+docker build -q -t app ./app
 cd ..
+EOF
 
+# 컨테이너 실행 스크립트(docker-start.sh)
+cat <<EOF > load-balancer-fastapi/docker-start.sh
 
-◆ 컨테이너 실행 스크립트(docker-start.sh)
-vi load-balancer-fastapi/docker-start.sh
+#docker 브리지 네트워크 생성 
+docker network create my-net
+
+# 폴더 변경 
+cd load-balancer-fastapi
 
 # web1 실행 (alias = app)
 docker run -d --rm \
@@ -434,30 +433,40 @@ docker run -d --rm \
 docker run -d --rm \
   --name lb \
   --net my-net \
-  -v nginx/nginx.conf:/etc/nginx/nginx.conf:ro \
+  -v ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro \
   -p 8080:80 \
   nginx
 
-◆ 컨테이너 종료 스크립트(docker-stop.sh)
-vi load-balancer-fastapi/docker-stop.sh
+EOF
+
+# 컨테이너 종료 스크립트(docker-stop.sh)
+cat <<EOF > load-balancer-fastapi/docker-stop.sh
 # web1, web2, lb 종료 
 docker stop web1 web2 lb
+EOF
 
-◆ 컨테이너 제거 스크립트(docker-rm.sh)
-vi load-balancer-fastapi/docker-rm.sh
+# 컨테이너 제거 스크립트(docker-rm.sh)
+cat <<EOF > load-balancer-fastapi/docker-rm.sh
 # web1, web2, lb 종료 
-docker rm web1 web2 lb
+docker rm -f web1 web2 lb
 docker network rm my-net
+EOF
 
-◆ 스크립트 실행 권한 설정 
+# 스크립트 실행 권한 설정 
 chmod +x load-balancer-fastapi/docker*
 
-◆ 이미지 생성 
+# 이미지 생성 
 ./load-balancer-fastapi/docker-build.sh
 
-◆ 컨테이너 실행
+# 컨테이너 실행
 ./load-balancer-fastapi/docker-start.sh
 
-◆ 실행 테스트 (host에서 실행)
+# 실행 테스트 (host에서 실행) 
+# 호스트명 변경 되면서 실행되는 것을 확인한다 
 curl http://localhost:8080
+curl http://localhost:8080
+curl http://localhost:8080
+curl http://localhost:8080
+curl http://localhost:8080
+
 
