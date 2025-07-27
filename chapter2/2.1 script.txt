@@ -276,8 +276,8 @@ ifconfig
 docker network create --driver=bridge \
   --subnet=172.72.0.0/16 \
   --ip-range=172.72.0.0/24 \
-  #--gateway=172.72.0.1 \
-  #my_custom_network 
+  --gateway=172.72.0.1 \
+  my_custom_network 
 
 #59. 생성된 네트웩 확인 
 docker network ls
