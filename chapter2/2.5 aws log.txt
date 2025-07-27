@@ -1,0 +1,5 @@
+docker run -it --log-driver=awslogs \
+  --log-opt awslogs-region=ap-northeast-2 \
+  --log-opt awslogs-group=mylogs \
+  --log-opt awslogs-stream=mylogstream \
+  ubuntu:24.04
