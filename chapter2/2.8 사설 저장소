@@ -1,0 +1,46 @@
+#도커 사설 레지스트리
+#사설 레지스트리 컨테이너 생성 
+docker run -d --name myregistry \
+  -p 5000:5000 \
+  --restart=always \
+  registry
+ 
+#사설 레지스트리 컨테이너 정상 동작하는 확인하는 방법 
+curl http://localhost:5000/v2/
+
+#사설 레지스트리에 push 하기 위해서 저장소 명 앞에 (사설 레지스트리 서버주소):5000을 붙여야 한다 
+#저장소명 변경
+docker tag my-images-name:0.0 192.168.1.3:5000/my-images-name:0.0
+
+#사설 레지스트리에 push 를 한다(https 오류 발생함)
+docker push 192.168.1.3:5000/my-images-name:0.0
+
+# HTTPS가 아닌 HTTP를 사용하는 사설 Docker 레지스트리에 접근할 수 있도록 허용하는 방법 
+#1. /etc/docker/daemon.json에  "insecure-registries": ["192.168.1.3:5000"] 하기 
+sudo vi  /etc/docker/daemon.json
+{
+  "insecure-registries": ["192.168.1.3:5000"]
+}
+
+#2. Docker 데몬 재시작
+sudo systemctl restart docker
+
+#3. 설정 확인(Insecure Registries: 아래에 192.168.1.3:5000 있는지 확인)한다 
+docker info
+
+#4. 사설 레지스트리에 push 를 한다(정상 실행)
+docker tag my-images-name:0.0 192.168.1.3:5000/my-images-name:0.0
+
+#5. 사설 레지스트리에 있는 모든 이미지(정확히는 "리포지토리")의 목록을 보려면 _catalog
+curl 192.168.1.3:5000/v2/_catalog
+
+#6. 로컬 저장소에 등록된 my-images-name:0.0를 삭제하고 사설 저장소에 자장된 이미지 내려받기 
+#로컬 저장소 이미지 목록 확인 
+docker images -a 
+
+#my-images-name:0.0 이미지 삭제 
+docker rmi 192.168.1.3:5000/my-images-name:0.0
+
+#사설 저장소에서 my-images-name:0.0 내려 받기
+docker pull 192.168.1.3:5000/my-images-name:0.0
+
