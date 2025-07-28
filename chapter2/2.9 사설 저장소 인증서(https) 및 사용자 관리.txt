@@ -1,0 +1,144 @@
+#도커 사설 저장소 인증서(https) 및 사용자 관리  
+#자체(사설) 인증서와 키 발급 
+#self-signed ROOT 인증서(CA) 파일 생성 절차 
+#1. 인증서 파일 관리 폴더 생성 
+mkdir certs
+
+#2. 개인키 생성 절차 
+openssl genrsa -out ./certs/ca.key 2048
+
+#3. 인증서 생성 절차
+#대화형 입력 방법
+#openssl req -x509 -new -key ./certs/ca.key -days 10000 -out ./certs/ca.crt
+#
+#* Country Name (2 letter code) [AU]: 국가 코드입니다. 한국은 KR을 입력합니다.
+#* State or Province Name (full name) [Some-State]: 시/도 이름을 영문으로 입력합니다. (예: Seoul, Gyeonggi-do)
+#* Locality Name (eg, city) []: 시/군/구 이름을 영문으로 입력합니다. (예: Gangnam-gu)
+#* Organization Name (eg, company) [Internet Widgits Pty Ltd]: 회사 또는 조직의 영문 이름을 입력합니다. (예: MyCompany Inc.)
+#* Organizational Unit Name (eg, section) []: 부서 이름을 영문으로 입력합니다. (예: Development Team)
+#* Common Name (e.g. server FQDN or YOUR name) []: 인증서의 주체 이름입니다. 웹 서버의 경우 도메인 이름(e.g., www.example.com)을 입력하고, 개인 인증서의 경우 이름을 입력합니다.
+#* Email Address []: 이메일 주소를 입력합니다
+
+#한번에 입력하는 방법 
+openssl req -x509 -new -key ./certs/ca.key \
+-subj "/C=KR/ST=Seoul/L=Gangnam-gu/O=MyCompany/OU=Development Team/CN=example.com/emailAddress=admin@example.com" \
+-out ./certs/ca.crt \
+-days 10000
+
+
+#nginx에서 사용할 도메인 개인 키 생성 
+openssl genrsa -out ./certs/domain.key 2048
+
+
+#SSL/TLS 인증서를 발급받기 위한 중간 단계인 인증서 서명 요청(CSR, Certificate Signing
+  Request) 파일을 생성 방법  
+openssl req -new -key ./certs/domain.key -subj /CN=192.168.1.3 -out ./certs/domain.csr
+
+#인증서에 포함될 X.509 v3 확장(extensions) 정보
+cat <<EOF > extfile.cnf
+[v3_req]
+subjectAltName = @alt_names
+
+[alt_names]
+IP.1 = 192.168.1.3
+EOF
+
+# 사설 인증 기관(Private CA)의 역할을 수행하여, 접수된 인증서 서명 요청(CSR)에 서명하고 최종 SSL/TLS 인증서를 발급하는 명령어
+openssl x509 -req -in ./certs/domain.csr -CA ./certs/ca.crt -CAkey ./certs/ca.key -CAcreateserial -out ./certs/domain.crt -days 10000 -extfile extfile.cnf  -extensions v3_req
+
+#사설 저장소에 로그인할 사용자 계정 및 비밀번호 생성
+#htpasswd 프로그램 설치 
+sudo apt install apache2-utils -y
+
+#계정 생성 (비밀번호입력 할 것: 1004)
+htpasswd -c htpasswd alicek106
+
+#생성된 계정과 비밀번호 파일을 certs 폴더로 이동 한다 
+mv htpasswd 
+
+#certs/nginx 파일 생성 
+vi certs/nginx
+
+upstream docker-registry {
+  server registry:5000;
+}
+
+server {
+  listen 443 ssl;
+  server_name 192.168.1.3;
+  
+  ssl_certificate /etc/nginx/conf.d/domain.crt;
+  ssl_certificate_key /etc/nginx/conf.d/domain.key;
+
+  client_max_body_size 0;
+  chunked_transfer_encoding on;
+
+  location /v2/ {
+    auth_basic "registry.localhost";
+    auth_basic_user_file /etc/nginx/conf.d/htpasswd;
+    add_header 'Docker-Distribution-Api-Version' 'registry/2.0' always;
+
+    proxy_pass                         http://docker-registry;
+    proxy_set_header Host              $http_host;
+    proxy_set_header X-Real-IP         $remote_addr;
+    proxy_set_header X-Forwarded-For   $proxy_add_x_forwarded_for;
+    proxy_set_header X-Forwarded-Proto $scheme;
+    proxy_read_timeout                 900;
+  }
+}
+
+
+
+#기존에 실행되고 있는 저장소 컨테이너를 종료하고 제거한다 
+docker rm -f myregistry 
+
+#저장소 컨테이너를 다시 실행한다
+docker run -d --name myregistry --restart=always registry
+ 
+#nginx를 certs을 볼륨 설정 하고 myregistry 컨테이너를 네트웩에서 registry이름으로 접근할 실행한다 
+docker run -d --name nginx_frontend \
+  -p 443:443 \
+  --link myregistry:registry \
+  -v $(pwd)/certs/:/etc/nginx/conf.d \
+  nginx:1.27
+  
+#docker 컨테이너 실행 결과 확인한다 
+docker ps -a 
+
+#nginx와 myregistry 컨테이너가 정상이면 로그인을 진행한다 
+#현재 상태서는 오류 발생(docker에서 사설 인증서를 신뢰할 수 없다고 오류발생)
+docker login https:/192.168.1.3
+
+#사설 인증서를 인증서 목록에 복사하고 인증서를 업데이트 한다 
+sudo cp certs/ca.crt /usr/local/share/ca-certificates/
+sudo update-ca-certificates
+ 
+#docker 서비스를 재실행한다 
+sudo service docker restart 
+
+#nginx_frontend 컨테이너를 다시 실행한다(myregistry 컨테이너는 자동 실행하기 때문)
+docker start nginx_frontend
+
+#로그인을 다시 해본다(경고가 있지만 성공함)
+docker login https:/192.168.1.3
+
+#docker 이미지 목록을 확인한다 
+docker images -a
+
+# my-images-name:0.0 이미지가 존재하면 192.168.1.3/my-images-name:0.0으로 tag을 변경한다 
+docker tag my-images-name:0.0 192.168.1.3/my-images-name:0.0
+
+#사설 저장소에 이미지를 push 한다 
+docker push  192.168.1.3/my-images-name:0.0
+
+#로컬 저장소 존재하는 이미지를 삭제 한다
+docker rmi  192.168.1.3/my-images-name:0.0
+
+#docker 이미지 목록을 확인한다 (192.168.1.3/my-images-name:0.0 이미지 삭제된 것 확인)
+docker images -a
+
+#사설 저장소에 있는 192.168.1.3/my-images-name:0.0 이미지를 pull 해본다 
+docker pull  192.168.1.3/my-images-name:0.0
+
+#docker 이미지 목록을 확인한다 (192.168.1.3/my-images-name:0.0 이미지가 존재하는지 확인)
+docker images -a
