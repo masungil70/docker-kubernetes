@@ -1,0 +1,334 @@
+#■ 컨테이너 자원 할당 (가상머신의 cpu 개수를 4 이상으로 할 것)
+
+#1. 컨테이너의 상세 정보를 확인한다(자원 할당 제한 확인) 
+#docker inspect  [컨테이너명]
+docker inspect nginx1
+
+#2. 컨테이너 자원 변경 
+#docker uptate [변경할 자원 제한] [컨테이너명]
+docker update --cpuset-cpus=1 nginx1
+
+#3. 컨테이너 생성시 메모리 제한 
+#최소 메모리는 6Mb 임 
+docker run -d --memory="1g" --name memory_1g nginx 
+
+#3.1 메모리 제한 확인 
+docker inspect memory_1g | grep \"Memory\"
+ 
+#3.2 swap 메모리 제한 설정
+docker run -it --name swap_500m \
+  --memory="200m"  \
+  --memory-swap="500m" \
+  ubuntu:24.04
+
+#3.3 컨테이너 cpu 제한(1024 = cpu 할당에서 1의 비중의미함)
+docker run -it --name cpu_share \
+  --cpu-shares 1024 \
+  ubuntu:24.04
+
+#3.4 컨테이너 cpu에 부하는 명령(stress) 
+#stress 도구가 포함된 커스텀 Docker 이미지를 생성하는 방법
+#
+#1단계: 작업 디렉토리 및 Dockerfile 생성, Dockerfile을 저장할 디렉토리를 만듭니다.
+    mkdir stress-image
+    cd stress-image
+
+#  이제 stress-image 디렉토리 안에 Dockerfile이라는 이름의 파일을 생성하고 다음 내용을 추가합니다.
+
+cat <<EOF > Dockerfile
+# 1. 기본 이미지 선택
+# Ubuntu 24.04를 기반으로 이미지를 생성합니다.
+FROM ubuntu:24.04
+  # 2. 패키지 목록 업데이트 및 stress 설치
+# RUN 명령어는 셸 명령을 실행합니다.
+# apt-get update: 패키지 목록을 최신 상태로 업데이트합니다.
+# apt-get install -y stress: 'stress' 패키지를 설치합니다. '-y' 옵션은 모든 프롬프트에 자동으로 'yes'를 입력합니다.
+# && apt-get clean: 설치 후 불필요한 파일을 정리하여 이미지 크기를 줄입니다.
+RUN apt-get update && \
+    apt-get install -y stress && \
+    apt-get clean
+EOF
+
+#2단계: Docker 이미지 빌드
+
+#이제 Dockerfile이 있는 디렉토리에서 docker build 명령어를 사용하여 이미지를 생성합니다.
+
+# -t my-stress-image: 생성될 이미지의 이름을 'my-stress-image'로 태그합니다.
+# .: 현재 디렉토리의 Dockerfile을 사용하라는 의미입니다.
+docker build -t my-stress-image .
+
+#빌드가 완료되면, docker images 명령어로 생성된 이미지를 확인할 수 있습니다.
+
+docker images
+
+#3단계: 생성된 이미지로 컨테이너 실행
+#
+#이제 my-stress-image를 사용하여 stress 명령을 실행할 수 있습니다.
+#
+#예시 1: CPU 1개에 부하 주기(매우 중요 필수 : 가상 머신 cpu 개수 1, 2, 4)
+#
+docker run -d --name my-stress my-stress-image stress --cpu 1 
+
+#host 에서 장비에서 cpu 사용율 확인
+ps aux | grep stress
+
+# 
+#예시 2: CPU 1개에 30초 동안 부하 주기(30초 후 자동 종료)(매우 중요 필수 : 가상 머신 cpu 개수 1)
+#
+docker run -d --rm my-stress-image stress --cpu 1 --timeout 30s
+
+#host 에서 장비에서 cpu 사용율 확인
+ps aux | grep stress
+
+#
+#예시 3: CPU 2개, 메모리 512MB에 1분 동안 부하 주기
+#
+docker run -d --rm my-stress-image stress --cpu 2 --vm 1 --vm-bytes 512M --timeout 60s
+
+#host 에서 장비에서 cpu 사용율 확인
+ps aux | grep stress
+
+#
+#예시 4: CPU 1개, cpu-shares 512(50%) 사용 할 수 있게 제한 (매우 중요 필수 : 가상 머신 cpu 개수 1)
+#
+docker run -d --name cpu_512 --cpu-shares 512 my-stress-image stress --cpu 1 
+
+#host 에서 장비에서 cpu 사용율 확인(1024:512 = 2:1) 비율로 실행
+ps aux | grep stress
+
+#
+#예시 4: CPU 1개, 1개의 cpu 사용율 50% 사용 할 수 있게 제한 (매우 중요 필수 : 가상 머신 cpu 개수 1)
+#
+docker run -d --name cpu-05 --cpus="0.5" my-stress-image stress --cpu 1
+
+#
+#3.5  스트레스 확인 
+
+1. 컨테이너 관점에서의 확인 (docker stats)
+
+docker stats 명령어는 실행 중인 컨테이너의 리소스 사용량을 실시간으로 보여주는 가장 기본적인 도구입니다.
+
+사용법: 새로운 터미널을 열고 아래 명령어를 실행합니다.
+
+ 1 # 특정 컨테이너만 보려면 이름이나 ID를 명시
+ 2 docker stats <container_name_or_id>
+ 3
+ 4 # 예시
+ 5 docker stats my-stress
+
+출력 결과 해석:
+
+ 1 CONTAINER ID   NAME          CPU %     MEM USAGE / LIMIT   MEM %     NET I/O   BLOCK I/O   PIDS
+ 2 789fab581667   my-stress     99.98%    5.23MiB / 1.944GiB  0.26%     648B / 0B   0B / 0B     2
+
+ * `CPU %`: 가장 중요한 지표입니다.
+     * stress --cpu 1을 실행했다면 이 값이 100%에 가까워집니다.
+     * --cpus="0.5"로 제한했다면 50% 근처에서 유지됩니다.
+     * --cpus="2"로 설정하고 stress --cpu 2를 실행했다면 200%에 가까워집니다.
+     * 이 값을 통해 설정한 CPU 제한이 잘 동작하는지, 컨테이너가 얼마나 CPU를 사용하고 있는지 직접적으로 확인할 수 있습니다.
+ * `MEM USAGE / LIMIT`: 메모리 사용량과 할당된 한계를 보여줍니다. stress --vm 옵션을 사용했을 때 이 수치가 올라갑니다.
+ * `MEM %`: 할당된 메모리 한계 대비 사용률입니다.
+ * `PIDS`: 컨테이너 내에서 실행 중인 프로세스(또는 스레드)의 수입니다. stress --cpu 1의 경우, 마스터와 워커 프로세스 2개가 보이므로 2가 표시됩니다.
+
+2. 호스트 시스템 관점에서의 확인 (htop, top)
+
+호스트 시스템 전체에 미치는 영향을 확인하려면 htop이나 top과 같은 시스템 모니터링 도구를 사용합니다. htop이 시각적으로 더 뛰어나서 추천합니다.
+
+사용법:
+
+호스트 머신의 터미널에서 htop을 실행합니다.
+
+ 1 htop
+
+`htop` 화면에서 확인할 내용:
+
+ 1. CPU 사용률 막대 (상단):
+     * stress --cpu 1을 실행하면, CPU 코어 중 하나가 100% (빨간색)로 꽉 차 있는 것을 볼 수 있습니다.
+     * --cpus="0.5"로 제한하면, 특정 코어가 100%로 고정되지 않고 여러 코어에 걸쳐 사용량이 분산되거나, 한 코어의 사용량이 50% 근처에서 오르내리는 것을 볼 수 있습니다.
+ 2. 프로세스 목록:
+     * F4 키를 눌러 필터링 기능에 stress를 입력하면, stress 관련 프로세스만 볼 수 있습니다.
+     * COMMAND 열에 stress --cpu 1과 같은 명령어가 보입니다.
+     * %CPU 열에서 해당 프로세스가 CPU를 얼마나 사용하는지 확인할 수 있습니다.
+     * htop은 컨테이너 내부의 프로세스도 호스트의 다른 프로세스처럼 보여줍니다.
+ 3. htop 실행되지 않을 경우 설치 방법 
+    sudo apt install htop -y 
+
+3. CPU Throttling 통계 확인 (심화)
+
+컨테이너가 할당된 CPU 쿼터를 초과하여 쓰로틀링(제한)이 발생했는지 구체적인 수치로 확인하고 싶을 때 사용합니다.
+
+사용법:
+
+컨테이너의 cgroup 파일 시스템 경로에서 관련 정보를 읽어옵니다.
+
+ # 1. 컨테이너의 전체 ID 확인
+ docker inspect -f '{{.Id}}' my-stress
+
+ # 2. 확인된 ID를 사용하여 cgroup 파일 경로로 이동하여 통계 확인
+ # 예시: /sys/fs/cgroup/system.slice/docker-<container_full_id>.scope/cpu.stat
+ cat /sys/fs/cgroup/system.slice/docker-789fab581667....scope/cpu.stat
+
+출력 결과 해석:
+
+ 1 nr_periods 150
+ 2 nr_throttled 120
+ 3 throttled_time 11987654321
+
+ * `nr_periods`: 총 경과된 CFS 주기(period)의 수입니다.
+ * `nr_throttled`: 쓰로틀링이 발생한 주기의 수입니다. 이 값이 계속 증가한다면, 컨테이너가 할당된 CPU보다 더 많은 자원을 지속적으로 요구하고 있다는 의미입니다.
+ * `throttled_time`: 쓰로틀링으로 인해 프로세스 실행이 지연된 총 시간(나노초 단위)입니다.
+
+
+#3.4 컨테이너가 특정 cpu만 사용하게 설정 (--cpuset-cpus)
+#중요 vmware 가상 머신의 cpu 개수 4로 설정 
+#다음 컨테이너는 3번 cpu 만 사용 하게 설정 
+docker run -d --name cpuset_2 \
+  --cpuset-cpus=2 \
+  my-stress-image \
+  stress --cpu 1
+
+#상태 모이터링 htop 으로 확인한다 
+
+
+#3.5 cpu 주기 변경 
+ --cpu-period
+   * 의미: CPU 스케줄링 주기를 나타냅니다. 이 주기를 기준으로 컨테이너의 CPU 사용량을 계산합니다.
+   * 단위: 마이크로초(µs).
+   * 기본값: 100,000µs (즉, 100ms).
+   * 유효 범위: 1,000µs ~ 1,000,000µs.
+   * 설명: 이 값은 CPU 할당량을 계산하는 기준이 되는 시간입니다. "100ms마다 CPU 사용량을 체크하겠다"는 의미로
+     이해할 수 있습니다.
+
+  --cpu-quota
+   * 의미: --cpu-period 동안 컨테iner가 사용할 수 있는 CPU 시간을 나타냅니다.
+   * 단위: 마이크로초(µs).
+   * 기본값: -1 (제한 없음).
+   * 설명: 이 값은 --cpu-period 동안 컨테이너가 최대로 사용할 수 있는 CPU 시간의 총량입니다. 예를 들어,
+     cpu-period가 100,000µs이고 cpu-quota가 50,000µs라면, 컨테이너는 100ms 동안 CPU를 50ms만 사용할 수
+     있습니다. 이는 CPU 코어의 50%를 사용하는 것과 같습니다.
+
+  핵심 관계: cpu-quota / cpu-period = 사용 가능한 CPU 코어 수
+   * 1 Core 사용: --cpu-period=100000, --cpu-quota=100000
+   * 0.5 Core 사용: --cpu-period=100000, --cpu-quota=50000
+   * 2 Cores 사용: --cpu-period=100000, --cpu-quota=200000
+
+  더 쉬운 방법: --cpus 옵션
+  대부분의 경우, --cpu-period와 --cpu-quota를 직접 계산하는 것은 번거롭습니다. Docker는 이를 더 쉽게 설정할
+  수 있도록 --cpus 옵션을 제공합니다.
+
+   * --cpus="0.5": CPU 코어의 50%를 사용하도록 제한합니다. (--cpu-period=100000, --cpu-quota=50000와 동일)
+   * --cpus="1.0": CPU 코어 1개를 사용하도록 제한합니다. (--cpu-period=100000, --cpu-quota=100000와 동일)
+   * --cpus="2.0": CPU 코어 2개를 사용하도록 제한합니다. (--cpu-period=100000, --cpu-quota=200000와 동일)
+   
+#예제 컨테이너 실행 (CPU 50% 제한, 부하는 100%로 설정)
+docker run -d --name with-limit --cpu-quota=50000 my-stress-image stress --cpu 1
+#* --cpus 옵션을 사용하면 더 간단함(위와 동일함)
+docker run -d --name with-limit --cpus="0.5" my-stress-image stress --cpu 1
+
+고급 과정으로 운영 환경에서는 CPU Throttling이 발생하지 않도록 관리하는 방법을 알아 본다
+Throttling은 애플리케이션의 성능 저하와 응답 시간 증가의 직접적인 원인이 되기 때문이다.
+
+#3.5.1 Throttling 발생 수동 확인 (간단한 스크립트)
+
+모니터링 시스템이 없는 경우, 간단한 쉘 스크립트를 작성하여 주기적으로 Throttling 상태를 확인할 수 있습니다.
+
+vi  monitor_throttling.sh
+
+#!/bin/bash
+
+# 모든 실행 중인 컨테이너 ID 목록 가져오기
+CONTAINER_IDS=$(docker ps -q)
+
+echo "--- CPU Throttling 현황 ---"
+for ID in $CONTAINER_IDS; do
+  # 컨테이너 이름 가져오기
+  NAME=$(docker inspect --format '{{.Name}}' $ID | sed 's/\///')
+  
+  # 컨테이너의 cgroup 경로를 구성합니다.
+  # 이 경로는 시스템의 cgroup 드라이버(systemd 또는 cgroupfs)에 따라 약간 다를 수 있습니다.
+  # systemd 드라이버 경로: /sys/fs/cgroup/system.slice/docker-<컨테이너ID>.scope/
+  # cgroupfs 드라이버 경로: /sys/fs/cgroup/docker/<컨테이너ID>/
+  CGROUP_PATH_SYSTEMD="/sys/fs/cgroup/system.slice/docker-${ID}.scope/cpu.stat"
+  CGROUP_PATH_CGROUPFS="/sys/fs/cgroup/docker/${ID}/cpu.stat"
+
+  if [ -n "$CPU_STAT" ]; then
+    NR_THROTTLED=$(echo "$CPU_STAT" | grep "nr_throttled" | awk '{print $2}')
+    THROTTLED_TIME=$(echo "$CPU_STAT" | grep "throttled_time" | awk '{print $2}')
+
+  # throttled_time이 0보다 크면 Throttling 발생
+  if [ -n "$CPU_STAT" ]; then
+      # cpu.stat 파일에서 Throttling 데이터를 추출합니다.
+      # cgroup v2에서는 'throttled_usec' 값을 확인합니다.
+      THROTTLED_TIME=$(echo "$CPU_STAT" | grep 'throttled_usec' | awk '{print $2}')
+      # Throttling 시간이 0보다 크면, 해당 컨테이너는 Throttling을 겪고 있는 것입니다.
+      if [ -n "$THROTTLED_TIME" ] && [ "$THROTTLED_TIME" -gt 0 ]; then
+          echo "컨테이너: $NAME (ID: $ID)"
+          echo "  - Throttled 시간 (마이크로초): $THROTTLED_TIME"
+          echo "  -> 조치 필요: 이 컨테이너는 CPU Throttling을 겪고 있습니다."
+          # 총 CPU 사용 시간 출력 
+          USAGE_USEC=$(echo "$CPU_STAT" | grep 'usage_usec' | awk '{print $2}')
+          echo "  - 총 CPU 사용 시간 (마이크로초): $USAGE_USEC"
+      fi
+  fi
+ done
+
+
+  이 스크립트를 cron 등으로 주기적으로 실행하여 Throttling이 발생하는 컨테이너를 찾아낼 수 있습니다.
+  
+#3.5.2 Crontab 등록 예시
+
+  crontab -e 명령어로 편집기를 열고 아래 내용 중 하나를 추가합니다.
+
+  중요: cron에서 실행되는 스크립트는 출력이 메일로 전송될 수 있으므로, 로그 파일로 리디렉션하는 것이 좋습니다.
+
+  예시: 5분마다 실행 (일반적인 권장 설정)
+
+  */5 * * * * /home/kosa/monitor_throttling.sh >> /var/log/throttling_monitor.log 2>&1
+
+#3.5.3 Throttling 발생 시 처리 방안
+
+  Throttling이 감지되었다면, 다음과 같은 방법으로 문제를 해결할 수 있습니다.
+
+  1 원인 분석
+
+  가장 먼저 해야 할 일은 왜 Throttling이 발생했는지 파악하는 것입니다.
+
+   * 애플리케이션 프로파일링: APM(Application Performance Monitoring) 도구(예: Pinpoint, Scouter, New Relic)를
+      사용하거나, 프로파일링 도구(예: perf, jprofiler)를 사용하여 애플리케이션의 어느 부분에서 CPU를 많이
+     사용하는지 분석합니다.
+       * 특정 요청이 급증했는가?
+       * 비효율적인 알고리즘이나 무한 루프가 있는가?
+       * 백그라운드 작업이 과도하게 실행되고 있는가?
+   * 리소스 사용량 분석: docker stats 명령어나 모니터링 대시보드를 통해 해당 컨테이너의 CPU 사용량 추이를
+     확인합니다. 특정 시간대에 CPU 사용량이 급증하는 패턴이 있는지 확인합니다.
+
+  2 해결 조치
+  원인 분석이 끝나면, 다음과 같은 조치를 취할 수 있습니다.
+
+   * CPU 할당량 상향 조정:
+    가장 간단한 해결책입니다. 애플리케이션이 정상적으로 더 많은 CPU를 필요로 하는 경우, 컨테이너에 할당된 CPU를 늘려줍니다.
+     * Docker: docker update --cpus="1.5" <container_id>
+     * 주의: 무작정 리소스를 늘리는 것은 근본적인 해결책이 아닐 수 있습니다. 비용 증가와 다른 컨테이너에 대한 영향을 고려해야 합니다.
+
+   * 애플리케이션 코드 최적화:
+    근본적인 해결책입니다. 프로파일링을 통해 발견된 병목 지점을 개선합니다.
+     * 비효율적인 알고리즘을 개선합니다.
+     * 불필요한 루프나 재귀 호출을 제거합니다.
+     * 캐싱을 적용하여 반복적인 연산을 줄입니다.
+     * I/O 대기 시간을 줄여 CPU가 대기하는 시간을 최소화합니다.
+
+   * Scale-Out (수평 확장):
+    단일 컨테이너의 부하를 줄이기 위해 컨테이너 인스턴스 수를 늘리는 방법입니다. 로드 밸런서를 사용하여
+  트래픽을 여러 컨테이너로 분산시킵니다.
+     * Docker Swarm: docker service scale <service_name>=3
+     * Kubernetes: kubectl scale deployment <deployment_name> --replicas=3
+     * 이 방법은 stateless 애플리케이션에 적합합니다.
+
+   * CPU 선호도(Affinity) 설정:
+    특정 CPU 코어를 특정 컨테이너에 할당하여 다른 프로세스와의 간섭을 줄일 수 있습니다. --cpuset-cpus 옵션을 사용합니다.
+     * 예: docker run -d --cpuset-cpus="0,1" my-app (CPU 0번과 1번 코어만 사용)
+     * 이 방법은 CPU 캐시 효율을 높여 성능을 향상시킬 수 있지만, 유연성이 떨어지므로 신중하게 사용해야 합니다.
+
+
+
+
