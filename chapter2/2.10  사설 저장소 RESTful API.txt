@@ -1,0 +1,182 @@
+#사설 저장소 RESTful API
+#사설 저장소는 기본적으로 컨테이너를 내부(/var/lib/registry)에 이미지를 저장합니다 
+#컨테이너가 제거되면 저장된 모든 이미지가 삭제됩니다 
+#그래서 이미지를 별도의 장소에 저장하는 것이 좋습니다
+#사설 저장소를 nginx를 이용하지 않고 5000 포트로 연결을 하기 위해서는 
+#기존 컨테이너를 종료하고 -p 5000:5000을 추가하고 
+#host의 /home/kosa/registry_data 폴더를 볼륨으로 해서 사설 저장소에서 사용할 수 있게 설정하고 컨테이너를 실행한다
+
+#host 서버에 이미지를 저장할 폴더를 생성한다 
+mkdir ~/registry_data
+
+#이전에 실행중인 myregistry 컨테이너를 종료하고 제거한다 
+docker rm -f myregistry
+
+#myregistry 새롭게 실행한다
+docker run -d --name myregistry -p 5000:5000 -v /home/kosa/registry_data:/var/lib/registry --restart=always registry
+
+#로컬 저장소 저장된 이미지를 사설 저장소에 push 합니다 
+docker push 192.168.1.3/my-images-name:0.0
+ 
+#1. 목록 얻기 
+#nginx 사용하는 경우 
+#curl -u [계정명]:[비밀번호] https://192.168.1.3/v2/_catalog
+curl -u alicek106:1004 https://192.168.1.3/v2/_catalog
+
+#nginx를 사용하지 않고 직접 컨테이너를 사용하는 경우 (5000 포트사용)
+curl http://192.168.1.3:5000/v2/_catalog
+ 
+#이전에 push 한 이미지 목록이 json 포멧으로 출력되는 것을 확인 할 수 있음 
+
+#실행중인 myregistry 컨테이너를 종료하고 제거하고 다시 사설 저장소를 실행해도 이전에 push 이미지들이 존재하는 것을 확인 할 수 있다  
+docker rm -f myregistry
+
+#myregistry 새롭게 실행한다
+docker run -d --name myregistry -p 5000:5000 -v /home/kosa/registry_data:/var/lib/registry --restart=always registry
+
+#이전에 push 한 이미지 목록 확인 해 본다
+curl http://192.168.1.3:5000/v2/_catalog
+
+#이미지에 대한 tag 목록을 출력한다 
+#RESTful API : 서버주소/v2/[이미지명]/tags/list
+curl http://192.168.1.3:5000/v2/my-images-name/tags/list
+
+#이미지의 상세 정보얻기
+#RESTful API : 서버주소/v2/[이미지명]/manifests/[tag명]
+#header에 레지스트리 컨테이너에 저장된 이미지 정보의 묶음을 의미하는 정보를 설정한다
+curl -i --header "Accept: application/vnd.docker.disstribution.manifest.v2+json" \
+ http://192.168.1.3:5000/v2/my-images-name/manifests/0.0
+
+#스키마 버전 1을 호출 하는 경우 
+curl http://192.168.1.3:5000/v2/my-images-name/manifests/0.0
+
+#사설 저장소에서 이미지를 삭제하기 위해서는 삭제 기능 활성화를 해야 한다 
+#기본적으로 registry 컨테이너는 실수로 이미지를 삭제하는 것을 방지하기 위해 삭제 기능이 비활성화되어 있습니다. 
+#레지스트리 컨테이너를 시작할 때 환경 변수 REGISTRY_STORAGE_DELETE_ENABLED=true를 추가합니다.
+
+#실행중인 myregistry 컨테이너를 종료하고 제거한다
+docker rm -f myregistry
+
+#myregistry 새롭게 실행한다
+docker run -d --name myregistry -p 5000:5000 -v /home/kosa/registry_data:/var/lib/registry --restart=always -e REGISTRY_STORAGE_DELETE_ENABLED=true registry
+
+#사설 저장소에 저장된 이미지를 삭제할 때 절차 
+#1. 이미지의 참조(Manifest)를 삭제
+#2. 실제 데이터(Blob)를 삭제 
+# 단계별로 진행해야 한다
+#이미지 상세 정보 중 header의 Docker-Content-Digest 값을 사용하여 삭제한다 
+curl -i --header "Accept: application/vnd.docker.disstribution.manifest.v2+json" \
+ http://192.168.1.3:5000/v2/my-images-name/manifests/0.0
+
+예> 상세 정보 중 
+Docker-Content-Digest: sha256:a078d3158dca882741e9d81f640d53dce5026f9ed5fb401d0accbf7a12a931b2
+
+#이미지의 참조(Manifest)를 삭제하는 명령어
+#curl -X DELETE http://192.168.1.3:5000/v2/[이미지명]/manifests/[Docker-Content-Digest값]
+
+curl -X DELETE http://192.168.1.3:5000/v2/my-images-name/manifests/sha256:a078d3158dca882741e9d81f640d53dce5026f9ed5fb401d0accbf7a12a931b2
+ 
+#위 명령이 성공 하면 이미지에 대한 tag 목록을 출력한다 (삭제된 tag명을 확인할 수 있다)
+#실제 데이터 파일은 삭제되지 않음 
+curl http://192.168.1.3:5000/v2/my-images-name/tags/list
+
+
+#실제 데이터 파일를 위해서는 이미지의 상세정보 중 layers->digest 값이 필요함
+
+#이미지의  데이터 파일를 삭제하는 명령어
+#레이어 정보만 삭제가 됨 tree 명령어 이용하여 폴더 구조 확인 
+#curl -X DELETE http://192.168.1.3:5000/v2/[이미지명]/blobs/[layers->digest값]
+
+curl -i -X DELETE http://192.168.1.3:5000/v2/my-images-name/blobs/sha256:e87500e698966458d9dfc34df84602985c9821f39666619792fe6282aa6df5d4
+
+#실제 데이터 파일를 삭제하기 위해서 가비지 컬렉션(Garbage Collection) 실행해야됨 
+#가비지 컬렉션을 실행 하기 위해서 config.yml 설정 파일이 필요함 
+
+vi config.yml 
+version: 0.1
+log:
+  level: info
+
+storage:
+  filesystem:
+    rootdirectory: /var/lib/registry
+  delete:
+    enabled: true
+    
+http:
+  addr: 0.0.0.0:5000
+  
+#실행중인 myregistry 컨테이너를 종료하고 제거한다
+docker rm -f myregistry
+
+#myregistry 새롭게 실행한다
+docker run -d --name myregistry \
+  -p 5000:5000 \
+  -v /home/kosa/registry_data:/var/lib/registry \
+  -v /home/kosa/config.yml:/etc/docker/registry/config.yml \
+  --restart=always \
+  registry
+
+#실제로 파일을 삭제하기 전에 어떤 Blob들이 삭제될지 미리 확인
+docker exec myregistry bin/registry garbage-collect /etc/docker/registry/config.yml --dry-run
+
+실습 
+#실제 파일이 삭제 되는지 확인 해본다(단계)
+1. ubunut 24.04 이미지를 사용하여 컨테이너를 생성하고, 
+docker run -it --name container2 ubuntu:24.04
+
+2. 컨테이너 안에서 /root경로 dd 명령어를 사용하여 50M 짜리 파일을 생성한다 
+dd if=/dev/urandom of=50M_file.dat bs=1M count=50
+exit
+ 
+3. 컨테이너의 결과를 이미지명 192.168.1.3:5000/my_delete_test_image:0.0 저장한다 
+docker commit container2 192.168.1.3:5000/my_delete_test_image:0.0 
+
+4. 이미지명 192.168.1.3:5000/my_delete_test_image:0.0을 사설 저장소에 push 한다 
+docker push 192.168.1.3:5000/my_delete_test_image:0.0
+
+5. 사설 저장소에 저장된 전체 공간을 확인한다
+#폴더 이동 
+cd /home/kosa/registry_data/docker/registry/v2
+
+#저장된 전체 하위 폴더 공간을 확인한다 
+du -h --max-depth=1
+  
+6. my_delete_test_image:0.0 이미지의 상세 정보를 확인한다(Docker-Content-Digest값)
+curl -i --header "Accept: application/vnd.docker.disstribution.manifest.v2+json" \
+ http://192.168.1.3:5000/v2/my_delete_test_image/manifests/0.0
+ 
+7.이미지의 참조(Manifest)를 삭제한다
+curl -X DELETE http://192.168.1.3:5000/v2/my_delete_test_image/manifests/sha256:557e7e524c80e427a70631486d0aa62636f1ad8903e1f23ff22bad7334cdff43
+
+sha256:df1bc7bfcd30b4ace8168c3b0ba7bcd89c18dba3191dcddbc954d966e7d74f26
+
+8. 삭제후 tag 목록 확인한다 
+curl http://192.168.1.3:5000/v2/my_delete_test_image/tags/list
+     
+9. 이미지의 참조(Manifest)를 삭제후 저장된 전체 하위 폴더 공간을 확인한다 
+(메타 데이터 삭제이기 때문에 저장공간 거의 변화 없음)
+du -h --max-depth=1 
+
+10. 이미지의 데이터 파일를 삭제한다
+curl -i -X DELETE http://192.168.1.3:5000/v2/my_delete_test_image/blobs/sha256:e87500e698966458d9dfc34df84602985c9821f39666619792fe6282aa6df5d4
+
+curl -i -X DELETE http://192.168.1.3:5000/v2/my_delete_test_image/blobs/sha256:bd1e279b8ef527e772d7810e62ef2db4c2ff6f22a156ed7fd079621d8e09ed74
+
+curl -i -X DELETE http://192.168.1.3:5000/v2/my_delete_test_image/blobs/sha256:517f179aa27b06f6d944eeb82b1a262d27cfb4620ee0e487473a28447f212002
+
+11. 이미지의 데이터 파일를 삭제 후 저장된 전체 하위 폴더 공간을 확인한다 
+(이미지의 데이터 파일 메타 데이터 삭제이기 때문에 저장공간 거의 변화 없음)
+du -h --max-depth=1 
+
+12. 실제로 파일을 삭제하기 전에 어떤 Blob들이 삭제될지 미리 확인
+docker exec myregistry bin/registry garbage-collect /etc/docker/registry/config.yml --dry-run
+
+13. 실제 가비지 컬렉션을 동작한다
+docker exec myregistry bin/registry garbage-collect /etc/docker/registry/config.yml
+
+14. 이미지의 데이터 파일를 삭제 후 저장된 전체 하위 폴더 공간을 확인한다 
+./blobs의 크기가 변화하는 것을 확인한다
+du -h --max-depth=1 
+
+
