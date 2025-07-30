@@ -114,21 +114,21 @@ docker build -t fastapi-env-app .
 docker images
 
 5. 기본 실행 (log-level: info, reload 비활성화)
-docker run -d --name fastapi-info -p 8000:8000 fastapi-env-app
+docker run -it --name fastapi-info -p 8000:8000 fastapi-env-app
 
 6. curl 명령어로 실행한다 
 curl http://localhost:8000
 
 7. 종료하고 log-level=debug 설정 하여 실행한다 
 docker rm -f fastapi-info
-docker run -d --name fastapi-info -p 8000:8000 -e LOG_LEVEL=debug fastapi-env-app
+docker run -it --name fastapi-info -p 8000:8000 -e LOG_LEVEL=debug fastapi-env-app
 
 8. curl 명령어로 실행한다 
 curl http://localhost:8000
 
 9 debug 리로드 확인 하기 위해 컨테이너 실행 변경 (볼륨으로 main.py를 설정한다)
 docker rm -f fastapi-info
-docker run -d --name fastapi-info \
+docker run -it --name fastapi-info \
   -p 8000:8000 \
   -v $(pwd):/app \
   -e DEBUG=1 \
