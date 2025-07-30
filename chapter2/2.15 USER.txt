@@ -1,0 +1,47 @@
+USER 
+ 컨테이너에서 명령을 실행할 사용자 또는 UID를 설정하는 명령입니다. 
+ 아래는 USER 명령어에 대한 상세한 설명입니다.
+
+1. 기본 문법(dockerfile)
+  USER <username>[:<group>]  
+  USER <UID>[:<GID>]
+
+  <username>: 컨테이너 내 사용자 계정 (예: root, appuser)
+  <UID>: 리눅스 사용자 ID (예: 1000)
+  <GID>: 그룹 ID (선택)
+
+2. 기본 동작
+  USER 명령 이후의 모든 명령 (RUN, CMD, ENTRYPOINT, COPY, ADD 등)는 해당 사용자 권한으로 실행됩니다.
+  USER는 지정한 위치 이후부터 영구 적용됩니다.
+  
+  1. 작업 폴더 생성 및 생성된 경로로 이동 
+  mkdir ~/user_exam  && cd ~/user_exam
+  
+  2. Dockerfile 파일을 작성한다 
+  vi Dockerfile
+  FROM ubuntu:24.04
+
+  # 일반 사용자 생성
+  RUN useradd -m appuser
+
+  # 작업 디렉토리 설정
+  WORKDIR /app
+
+  # 파일 생성 및 권한 설정
+  RUN echo "hello" > test.html && \
+      chown -R appuser:appuser /app
+
+  # 이후 명령을 appuser 권한으로 실행
+  USER appuser
+
+
+  
+  3. Dockerfile을 빌드한다 
+  docker build -t user-image .
+  
+  4. 컨테이너로 실행하고 컨테이너 내부에  프롬프트 확인(appuser@16진수$)  
+     /app 폴더, /app/test.html 파일의 소유자와 그룹을 확인한다 
+  docker run -it --rm user-image
+
+  
+  
