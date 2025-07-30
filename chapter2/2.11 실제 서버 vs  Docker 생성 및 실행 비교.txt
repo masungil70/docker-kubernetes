@@ -80,4 +80,36 @@
   각 레이어는 Dockerfile의 각 구문과 연결된다 
   docker inspect mybuild:0.0
   
+  10. 캐시를 이용한 이미지 빌드(Dockerfile 파일의 일부만 사용하여 Dockerfile2 생성)
+      
+  vi Dockerfile2
+  FROM ubuntu:24.04
+  LABEL "purpose"="practrice"
+  RUN apt-get update
+  
+  11. Dockderfile명이 아닌 다른 파일을 빌드 하는 방법 (매우 빠른 빌드 속도, CACHED 로그 확인한다)
+  docker build -f Dockerfile2 -t mycache:0.0  .
+  
+  12. 캐시를 사용하지 이미지 빌드한 방법 
+  docker build --no-cache -t mybuild:0.0  .
+
+  13. nginx 이미지를 캐싱하여 새로운 이미지를 생성하는 방법 
+    #index.html 문서 생성 
+    echo Ningx 캐싱으로 사용하여 이미지 생성 > index.html
+  
+    #vi를 사용하여 nginx 이미지를 캐싱 하는 Dockerfile3 파일 생성 
+    vi Dockerfile3
+    # 1. 베이스 이미지 지정 공식 Nginx 이미지를 베이스로 사용합니다.
+    # --cache-from nginx 옵션은 바로 이 FROM 명령어에서 캐시를 찾으려고 시도합니다.
+    FROM nginx:latest
+
+    # 2. 새로운 레이어 추가 우리만의 커스텀 파일을 Nginx의 기본 웹 루트 디렉토리에 복사합니다.
+    # 이 COPY 명령어는 베이스 이미지 위에 새로운 레이어를 생성합니다.
+    COPY index.html /usr/share/nginx/html/index.html
+    
+    # 3. --cache-from 을 사용하지 않고 이미지 빌드 (CACHED 로그 확인한다)
+    docker build -f Dockerfile3 -t my_extend_nginx:0.0 .
+    
+    # 4. --cache-from 을 사용하고 이미지 빌드 (CACHED 로그 확인한다)
+    docker build --cache-from nginx -f Dockerfile3 -t my_extend_nginx:0.0 .
   
