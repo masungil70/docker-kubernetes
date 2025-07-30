@@ -1,0 +1,91 @@
+ARG 
+Dockerfile에서 ARG는 빌드 시점에만 사용할 수 있는 변수를 정의하는 데 사용되며, ENV와는 달리 런타임에는 존재하지 않습니다.
+
+ARG 기본 개념
++-------+---------------------------------------------------------------------+
+| 항목  |	                               설명                                 |
++-------+---------------------------------------------------------------------+
+|ARG	  | Docker 이미지를 빌드할 때 전달되는 변수 (build-time variable)       |
+|ENV	  | Docker 컨테이너를 실행할 때 사용할 수 있는 변수 (run-time variable) |
+|공통점 | 둘 다 변수로 정의되며 RUN, CMD, COPY, ENV 명령어 등에서 사용 가능   |
+|차이점 | ARG는 빌드 후 사라짐, ENV는 컨테이너 환경에 남아있음                |
++-------+---------------------------------------------------------------------+
+
+1. 작업 폴더 생성 및 생성된 경로로 이동 
+mkdir ~/arg_eaxm && cd ~/arg_eaxm
+
+2. Dockerfile를 생성한다 
+vi Dockerfile
+ARG VERSION=1.0
+FROM python:${VERSION}
+
+#빌드시 전달되는 인자
+ARG APP_HOME=/app
+WORKDIR ${APP_HOME}
+
+#환경변수
+ENV LOG_LEVEL=info
+
+COPY . .
+
+RUN echo "App Home is ${APP_HOME}"
+
+
+3. Dockerfile을 이용하여 이미지 빌드한다(이미지 빌드시 로그 확인)
+docker build -t arg_image_311 --build-arg VERSION=3.11 --build-arg APP_HOME=/usr/src/app .
+docker build -t arg_image_308 --build-arg VERSION=3.8 .
+ 
+4. 생성된 이미지를 이용하여 컨테이너로 실행한다(실행시 파이선 버전 확인한다)
+docker run -it --rm arg_image_311
+
+컨테이너 내부에서 ARG 변수 확인(존재하지 않음), ENV 환경변수 확인(존재함)한다
+import os 
+print(os.getenv("VERSION"))
+print(os.getenv("LOG_LEVEL"))
+
+---------------------------------------------------------------------------------
+ARG를 사용하는 예제 2
+ 
+폴더 구조 
+.
+├── Dockerfile2
+├── app_dev.py : 개발 버전 
+├── app_prod.py: 운영 버전 
+
+1. 개발 버전 파일 작성
+vi app_dev.py
+print("Running in 개발 버전 mode")
+
+2. 운영 버전 파일 작성
+vi app_prod.py
+print("Running in 운영 버전 mode")
+
+3. Dockerfile 파일 작성
+vi Dockerfile2 
+# 1단계: ARG로 모드 선택
+ARG MODE=dev
+FROM python:3.11-slim
+
+# 2단계: 다시 ARG 선언해야 FROM 이후에서도 인식됨
+ARG MODE=dev
+
+WORKDIR /app
+COPY . .
+
+# 3단계: 빌드 시 선택된 모드에 따라 파일 선택
+RUN if [ "$MODE" = "prod" ]; then \
+      cp app_prod.py main.py; \
+    else \
+      cp app_dev.py main.py; \
+    fi
+
+CMD ["python", "main.py"]
+
+4. dev 모드로 빌드
+docker build-f Dockerfile2  -t app-prod --build-arg MODE=dev .
+docker run --rm app-prod
+
+5. prod 모드로 빌드
+docker build -f Dockerfile2 -t app-prod --build-arg MODE=prod .
+docker run --rm app-prod
+
