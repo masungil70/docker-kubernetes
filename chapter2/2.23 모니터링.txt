@@ -1,0 +1,178 @@
+docker 모니터링 
+
+ Docker의 상태를 실시간으로 확인하고 자원 사용량을 분석하는 데 매우 유용한 세 가지 모니터링
+  명령어(docker stats, docker events, docker system df)에 대해 자세히 알아보자.
+
+  1. docker stats
+
+  컨테이너의 실시간 리소스 사용량 스트림을 보여주는 명령어입니다.
+
+  마치 Linux의 top이나 Windows의 작업 관리자처럼, 실행 중인 컨테이너들이 CPU, 메모리, 네트워크, 디스크를
+  얼마나 사용하고 있는지 실시간으로 보여줍니다. 컨테이너의 성능 문제를 진단할 때 가장 먼저 사용하게 되는
+  명령어 중 하나입니다.
+
+  주요 정보
+
+   * CPU %: 호스트의 전체 CPU 코어 대비 컨테이너가 사용 중인 CPU 비율
+   * MEM USAGE / LIMIT: 컨테이너가 현재 사용 중인 메모리 양 / 컨테이너에 할당된 최대 메모리 양
+   * MEM %: 할당된 최대 메모리 대비 현재 사용 중인 메모리 비율
+   * NET I/O: 컨테이너가 주고받은 네트워크 데이터 총량
+   * BLOCK I/O: 컨테이너가 호스트의 디스크에 읽고 쓴 데이터 총량
+   * PIDS: 컨테이너 내부에서 실행 중인 프로세스(또는 스레드)의 개수
+
+  사용 방법
+
+    # 실행 중인 모든 컨테이너의 리소스 사용량을 실시간으로 보여줌
+    docker stats
+   
+    # 특정 컨테이너(이름이나 ID로 지정)들의 정보만 보기
+    docker stats my_container1 my_container2
+   
+    # 실시간 스트림이 아닌, 현재 스냅샷만 한 번 출력하고 종료
+    docker stats --no-stream
+   
+    # 출력 형식을 직접 지정 (Go 템플릿 문법 사용)
+    docker stats --format "table {{.Name}}\t{{.CPUPerc}}\t{{.MemUsage}}"
+
+  예시
+
+   1 $ docker stats
+   2 CONTAINER ID   NAME                CPU %     MEM USAGE / LIMIT     MEM %     NET I/O
+     BLOCK I/O         PIDS
+   3 a1b2c3d4e5f6   my-nginx-app        0.05%     5.832MiB / 1.944GiB   0.29%     1.25kB / 0B
+     12.3MB / 0B       2
+   4 f9e8d7c6b5a4   my-database         1.20%     125.4MiB / 1.944GiB   6.31%     5.8kB / 2.1kB
+     256MB / 1.1GB     15
+
+  이 예시를 통해 my-database 컨테이너가 my-nginx-app보다 CPU와 메모리를 훨씬 많이 사용하고 있음을
+  직관적으로 파악할 수 있습니다.
+
+  2. docker events
+
+  Docker 데몬에서 발생하는 이벤트를 실시간으로 스트리밍하는 명령어입니다.
+
+  컨테이너, 이미지, 볼륨, 네트워크 등 Docker 객체에 어떤 일이 일어나고 있는지 서버 측의 활동 로그를
+  실시간으로 보여줍니다. 자동화 스크립트를 만들거나 특정 이벤트 발생 시 알림을 보내는 등의 작업에 매우
+  유용합니다.
+
+  주요 이벤트 종류
+
+   * 컨테이너: create, start, stop, die, kill, destroy, rename 등
+   * 이미지: pull, push, tag, untag, delete 등
+   * 볼륨: create, mount, unmount, destroy 등
+   * 네트워크: create, connect, disconnect, destroy 등
+
+  사용 방법
+
+    # 모든 이벤트를 실시간으로 출력
+    docker events
+   
+    # 특정 시간 이후의 이벤트만 보기 (타임스탬프 또는 Go 시간 형식)
+    docker events --since '2024-08-02T10:00:00'
+   
+    # 특정 시간 이전의 이벤트만 보기
+    docker events --until '1h' # 1시간 전까지의 이벤트
+   
+    # 필터를 사용하여 원하는 이벤트만 보기
+    # 예: 컨테이너 관련 이벤트만 보기
+    docker events --filter 'type=container'
+   
+    # 예: 컨테이너가 시작(start)되는 이벤트만 보기
+    docker events --filter 'type=container' --filter 'event=start'
+   
+    # 예: 특정 이미지(예: nginx:latest)와 관련된 이벤트만 보기
+    docker events --filter 'image=nginx:latest'
+   
+    # 출력 형식 지정
+    docker events --format '{{.Type}} 이벤트 발생: {{.Action}}, 상태: {{.Actor.Attributes.name}}'
+
+  예시
+
+    $ docker events
+    2024-08-02T11:30:00.123456789Z container create a1b2c3d4e5f6 (image=nginx:latest,
+    name=my-nginx-app)
+    2024-08-02T11:30:00.567890123Z network connect ... (container=a1b2c3d4e5f6, name=bridge,
+    type=bridge)
+    2024-08-02T11:30:00.987654321Z container start a1b2c3d4e5f6 (image=nginx:latest,
+    name=my-nginx-app)
+    2024-08-02T11:35:10.111111111Z container stop a1b2c3d4e5f6 (image=nginx:latest,
+    name=my-nginx-app, signal=15)
+    2024-08-02T11:35:10.222222222Z container destroy a1b2c3d4e5f6 (image=nginx:latest,
+     name=my-nginx-app)
+
+
+  3. docker system df
+
+  Docker가 사용하고 있는 디스크 공간의 상세 내역을 보여주는 명령어입니다.
+
+  Linux의 df (disk free) 명령어처럼, 이미지, 컨테이너, 볼륨 등이 각각 얼마나 많은 디스크 공간을 차지하고
+  있는지, 그리고 얼마나 많은 공간을 확보할 수 있는지 요약해서 보여줍니다. 불필요한 Docker 객체를 정리하여
+  디스크 용량을 확보해야 할 때 매우 유용합니다.
+
+  주요 정보
+
+   * TYPE: Docker 객체의 종류 (Images, Containers, Local Volumes, Build Cache)
+   * TOTAL: 해당 종류의 전체 객체 수
+   * ACTIVE: 현재 사용 중인(실행 중인 컨테이너, 다른 이미지의 기반이 되는 이미지 등) 객체 수
+   * SIZE: 해당 객체들이 차지하는 총 디스크 공간
+   * RECLAIMABLE: 회수 가능한(정리할 수 있는) 공간. (예: 중지된 컨테이너, 사용하지 않는 볼륨, 댕글링 이미지
+     등)
+
+  사용 방법
+
+   # Docker 디스크 사용량을 요약해서 보여줌
+   docker system df
+   
+   # 각 객체별로 상세 내역을 모두 보여줌 (어떤 이미지가 용량을 많이 차지하는지 등을 파악할 때 유용)
+   docker system df -v
+   # 또는
+   docker system df --verbose
+
+  예시
+
+  기본 출력:
+
+   $ docker system df
+   TYPE            TOTAL     ACTIVE    SIZE      RECLAIMABLE
+   Images          15        5         2.56GB    1.82GB (71%)
+   Containers      8         2         56.8MB    52.1MB (91%)
+   Local Volumes   10        3         1.2GB     800MB (66%)
+   Build Cache     120       0         5.4GB     5.4GB (100%)
+   
+  이 예시를 보면, 이미지, 컨테이너, 볼륨, 빌드 캐시에서 상당한 공간을 RECLAIMABLE(회수 가능)한 상태임을 알
+  수 있습니다.
+
+  상세 출력 (`-v` 옵션):
+
+    $ docker system df -v
+    Images space usage:
+    REPOSITORY          TAG                 IMAGE ID            CREATED             SIZE
+    SHARED SIZE         UNIQUE SIZE         CONTAINERS
+    ubuntu              latest              a2a15febcdf3        3 weeks ago         72.9MB
+    0B                  72.9MB              2
+    my-app              v1.2                b3b2b4c5d6e7        2 days ago          1.25GB
+    70.1MB              1.18GB              1
+    ...
+   
+    Containers space usage:
+    CONTAINER ID        IMAGE               COMMAND             LOCAL VOLUMES       SIZE
+    CREATED             STATUS              NAMES
+    a1b2c3d4e5f6        ubuntu              "bash"              0                   12.3MB
+    2 hours ago         Up 2 hours          my-container
+    f9e8d7c6b5a4        my-app:v1.2         "./start.sh"        1                   44.5MB
+    1 day ago           Exited (0) 1...     old-container
+    ...
+   
+    Local Volumes space usage:
+    VOLUME NAME         LINKS               SIZE
+    my-db-data          1                   1.2GB
+    test-volume         0                   800MB
+    ...
+  상세 보기를 통해 정확히 어떤 컨테이너가 중지 상태인지, 어떤 볼륨이 연결되지 않았는지 등을 파악하여
+  선별적으로 삭제할 수 있습니다.
+
+  이 명령어는 docker system prune 명령어와 함께 사용하면 좋습니다. docker system df로 정리 대상을
+  확인하고, docker system prune -a --volumes와 같은 명령으로 불필요한 객체를 한 번에 삭제하여 디스크
+  공간을 확보할 수 있습니다.
+  
+  
