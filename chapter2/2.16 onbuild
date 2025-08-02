@@ -85,7 +85,7 @@ ONBUILD
   보겠습니다.
 
   먼저 간단한 Python 앱을 준비합니다.
-  mkdir ~/onbuild_exam/child
+  mkdir -p ~/onbuild_exam/child
   cd ~/onbuild_exam/child
     
   vi requirements.txt
