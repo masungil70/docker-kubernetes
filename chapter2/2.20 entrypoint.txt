@@ -1,0 +1,214 @@
+
+  ENTRYPOINT, CMD 명령어
+  
+  두 명령어 모두 컨테이너가 시작될 때 실행될 커맨드를 지정한다는 공통점이 있지만, 사용 목적과 동작 방식에 중요한 차이가 있습니다.
+
+  1. `CMD`
+
+  CMD는 컨테이너의 기본 실행 커맨드 또는 `ENTRYPOINT`에 넘길 기본 파라미터를 지정합니다. CMD의 가장 큰 특징은 docker
+  run 커맨드 라인에서 다른 명령어를 전달할 경우 쉽게 대체(override)된다는 점입니다.
+
+  주요 용도:
+   * 컨테이너의 기본 실행 커맨드를 지정하고 싶을 때.
+   * ENTRYPOINT와 함께 사용하여 기본 파라미터를 전달하고 싶을 때.
+   * 사용자가 docker run 시 커맨드를 지정하지 않았을 때를 위한 기본값 설정.
+
+  형식:
+   1. Exec 형식 (권장): CMD ["executable","param1","param2"]
+   2. Shell 형식: CMD command param1 param2
+   3. `ENTRYPOINT` 파라미터 형식: CMD ["param1","param2"]
+
+  2. `ENTRYPOINT`
+
+  ENTRYPOINT는 컨테이너를 하나의 실행 파일처럼 만들 때 사용합니다. docker run 커맨드 라인에 전달된 인자(argument)들은
+  ENTRYPOINT에 지정된 커맨드에 추가됩니다. 즉, ENTRYPOINT 자체는 쉽게 바뀌지 않습니다.
+
+  주요 용도:
+   * 컨테이너를 특정 애플리케이션 실행 전용으로 만들고 싶을 때 (예: git, curl 등).
+   * 컨테이너 시작 시 항상 실행되어야 하는 스크립트를 지정할 때.
+   * docker run으로 전달되는 값을 커맨드의 파라미터로 사용하고 싶을 때.
+
+  형식:
+   1. Exec 형식 (권장): ENTRYPOINT ["executable", "param1", "param2"]
+   2. Shell 형식: ENTRYPOINT command param1 param2
+
+  `CMD` vs `ENTRYPOINT` 핵심 차이점 및 비교
+
+ 1. 목적:
+   * CMD: 컨테이너의 기본(default) 실행 커맨드를 지정합니다. 또는 ENTRYPOINT에 전달될 기본
+     파라미터를 지정합니다. 사용자가 docker run 시 별도의 커맨드를 지정하지 않았을 때 실행될 명령을
+     정의합니다.
+   * ENTRYPOINT: 컨테이너를 하나의 실행 파일처럼 동작하게 만드는 주(main) 실행 커맨드를 지정합니다.
+     컨테이너가 시작될 때 항상 이 명령어가 실행됩니다.
+
+  2. `docker run` 인자 처리:
+   * CMD: docker run <image> [command] 형태로 컨테이너를 실행할 때, [command] 부분에 지정된
+     명령어가 Dockerfile에 정의된 CMD를 완전히 대체(override)합니다. Dockerfile의 CMD는 무시되고,
+     docker run의 커맨드가 대신 실행됩니다.
+   * ENTRYPOINT: docker run <image> [args] 형태로 컨테이너를 실행할 때, [args] 부분에 지정된
+     인자들이 Dockerfile에 정의된 ENTRYPOINT 명령어의 파라미터로 추가됩니다. ENTRYPOINT 명령어
+     자체는 변경되지 않고, 전달된 인자들을 처리합니다.
+
+  3. 덮어쓰기 (Override):
+   * CMD: docker run 커맨드 라인에서 새로운 명령어를 지정하는 것만으로 쉽게 덮어쓸 수 있습니다.
+     이는 CMD가 기본값의 역할을 하기 때문입니다.
+   * ENTRYPOINT: docker run 커맨드 라인에서 ENTRYPOINT를 덮어쓰려면 --entrypoint 플래그를
+     명시적으로 사용해야 합니다 (docker run --entrypoint <new_entrypoint> <image>). 이는
+     ENTRYPOINT가 컨테이너의 고정된 진입점 역할을 하기 때문입니다.
+
+  4. 주 사용 사례:
+   * CMD: 사용자가 컨테이너 실행 시 특정 명령어를 지정할 수도 있고, 지정하지 않을 수도 있는 유연한
+     컨테이너를 만들 때 유용합니다. 예를 들어, 웹 서버 컨테이너의 경우 CMD로 기본 웹 서버 시작
+     명령을 제공하고, 사용자가 디버깅을 위해 셸을 실행할 수도 있게 합니다.
+   * ENTRYPOINT: 컨테이너를 특정 애플리케이션(예: git, curl, aws-cli 등)처럼 동작하게 만들거나,
+     컨테이너 시작 시 항상 특정 스크립트나 프로그램을 실행해야 할 때 사용합니다. docker run으로
+     전달되는 모든 인자가 해당 프로그램의 인자로 전달되도록 합니다.
+
+  5. 조합 사용:
+   * CMD: ENTRYPOINT가 정의되어 있을 때, CMD는 ENTRYPOINT에 전달될 기본 파라미터의 역할을 합니다.
+     이 경우 docker run으로 전달되는 인자는 CMD의 기본 파라미터를 대체하게 됩니다.
+   * ENTRYPOINT: CMD와 함께 사용될 때, ENTRYPOINT는 컨테이너의 주 실행 파일 또는 스크립트를
+     지정하고, CMD는 이 실행 파일에 전달될 기본 인자들을 제공하는 역할을 합니다. 이 조합은 가장
+     권장되는 패턴입니다.
+     
+
+  차이점을 보여주는 예제
+
+  이해를 돕기 위해 3가지 시나리오의 Dockerfile과 간단한 셸 스크립트를 현재 디렉터리에 생성해 보자.
+
+   * app.sh: 컨테이너에 전달된 모든 인자를 출력하는 간단한 스크립트
+   * Dockerfile.cmd: CMD만 사용한 예제
+   * Dockerfile.entrypoint: ENTRYPOINT만 사용한 예제
+   * Dockerfile.combined: CMD와 ENTRYPOINT를 함께 사용한 예제
+
+  vi app.sh
+  ---------------------------------------------------------------------
+  #!/bin/sh
+  echo "Running app.sh..."
+  echo "Arguments: $@"
+  ---------------------------------------------------------------------
+   
+  vi Dockerfile.cmd
+  ---------------------------------------------------------------------
+  # Dockerfile.cmd: CMD만 사용하는 경우
+  FROM alpine
+  WORKDIR /app
+  COPY app.sh .
+  RUN chmod +x app.sh
+
+  # 기본 실행 명령어로 app.sh를 지정하고 기본 파라미터로 "default-cmd-arg"를 전달
+  CMD ["./app.sh", "default-cmd-arg"]
+  ---------------------------------------------------------------------
+  
+  
+  vi Dockerfile.entrypoint
+  ---------------------------------------------------------------------
+  # Dockerfile.combined: ENTRYPOINT와 CMD를 함께 사용하는 경우
+  FROM alpine
+  WORKDIR /app
+  COPY app.sh .
+  RUN chmod +x app.sh
+
+  # 주 실행 명령어는 app.sh
+  ENTRYPOINT ["./app.sh"]
+
+  # ENTRYPOINT에 전달될 기본 파라미터는 "default-param-from-cmd"
+  CMD ["default-param-from-cmd"]  
+  ---------------------------------------------------------------------
+  
+  vi Dockerfile.combined
+  ---------------------------------------------------------------------
+  # Dockerfile.entrypoint: ENTRYPOINT만 사용하는 경우
+  FROM alpine
+  WORKDIR /app
+  COPY app.sh .
+  RUN chmod +x app.sh
+
+  # 컨테이너의 주 실행 명령어로 app.sh를 지정
+  ENTRYPOINT ["./app.sh", "fixed-entrypoint-arg"]
+  ---------------------------------------------------------------------
+  
+
+  아래 명령어들을 터미널에서 실행해 보세요.
+
+
+  실행 및 결과 비교
+
+  1. `CMD` 예제 (`Dockerfile.cmd`)
+
+   # 1. 이미지 빌드
+   docker build -t cmd-example -f Dockerfile.cmd .
+  
+   # 2. 기본 커맨드 실행 (Dockerfile의 CMD 실행)
+   docker run --rm cmd-example
+   # 예상 출력:
+   # Running app.sh...
+   # Arguments: default-cmd-arg
+  
+   # 3. `docker run`에서 커맨드 전달 (CMD가 대체됨)
+   docker run --rm cmd-example echo "Hello from command line"
+   # 예상 출력:
+   # Hello from command line
+   # (app.sh가 실행되지 않고, echo 명령어가 실행됨)
+  
+  
+  2. `ENTRYPOINT` 예제 (`Dockerfile.entrypoint`)
+
+   # 1. 이미지 빌드
+   docker build -t entrypoint-example -f Dockerfile.entrypoint .
+  
+   # 2. 기본 커맨드 실행 (Dockerfile의 ENTRYPOINT 실행)
+   docker run --rm entrypoint-example
+   # 예상 출력:
+   # Running app.sh...
+   # Arguments: fixed-entrypoint-arg
+  
+   # 3. `docker run`에서 인자 전달 (ENTRYPOINT에 추가됨)
+   docker run --rm entrypoint-example new-arg-from-cli
+   # 예상 출력:
+   # Running app.sh...
+   # Arguments: fixed-entrypoint-arg new-arg-from-cli
+  
+  결론: docker run에서 전달한 new-arg-from-cli가 ENTRYPOINT에 지정된 ./app.sh fixed-entrypoint-arg의 파라미터로
+  추가되었습니다. ENTRYPOINT 자체는 바뀌지 않았습니다.
+
+  ---
+
+  3. `ENTRYPOINT` + `CMD` 조합 예제 (`Dockerfile.combined`)
+
+  이 조합이 가장 강력하고 권장되는 방식입니다. ENTRYPOINT로 실행 파일을 고정하고, CMD로 기본 파라미터를 제공합니다.
+
+  # 1. 이미지 빌드
+  docker build -t combined-example -f Dockerfile.combined .
+ 
+  # 2. 기본 실행 (ENTRYPOINT + CMD 조합)
+  docker run --rm combined-example
+  # 예상 출력:
+  # Running app.sh...
+  # Arguments: default-param-from-cmd
+ 
+  # 3. `docker run`에서 인자 전달 (CMD만 대체되어 ENTRYPOINT에 추가됨)
+  docker run --rm combined-example another-arg
+  # 예상 출력:
+  # Running app.sh...
+  # Arguments: another-arg
+  
+  # 4. `docker run`에서 --entrypoint 옵션, 인자 전달 (entrypoint, CMD 모두 run 을 통해 전달)
+  docker run --rm --entrypoint=echo  combined-example another-arg
+  # 예상 출력:
+  another-arg
+
+  결론: docker run에서 인자(another-arg)를 전달하자 CMD에 있던 기본 파라미터(default-param-from-cmd)가 대체되어
+  ENTRYPOINT(app.sh)에 전달되었습니다. 이를 통해 실행 파일은 고정하되, 파라미터는 유연하게 변경할 수 있습니다.
+
+  최종 요약
+
+   * `CMD`만 사용: 컨테이너를 유연하게 실행하고 싶지만, 기본 동작을 설정해두고 싶을 때.
+   * `ENTRYPOINT`만 사용: 컨테이너를 특정 명령어 전용으로 만들고, docker run의 인자를 해당 명령어의 파라미터로만 쓰고
+     싶을 때.
+   * `ENTRYPOINT`와 `CMD` 조합: 가장 이상적인 방식. 컨테이너의 주 목적(실행 파일)은 ENTRYPOINT로 고정하고, CMD를 이용해
+      기본 파라미터를 제공하면서 사용자가 필요에 따라 파라미터를 쉽게 바꿀 수 있도록 합니다.
+
+  이제 생성된 파일들과 위 설명을 통해 CMD와 ENTRYPOINT의 차이점을 명확히 이해하셨기를 바랍니다. 추가로 궁금한 점이
+  있으시면 언제든지 질문해 주세요.
+
