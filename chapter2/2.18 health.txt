@@ -1,0 +1,333 @@
+HEALTHCHECK 
+HEALTHCHECK는 Dockerfile에서 컨테이너 내부에서 실행 중인 애플리케이션이 실제로 정상적으로 동작하고
+  있는지를 주기적으로 확인하는 방법을 정의하는 명령어입니다.
+
+  단순히 컨테이너가 "실행 중(running)"인 상태를 넘어, "건강한(healthy)" 상태인지 아닌지를 판단할 수 있게
+  해주는 매우 중요한 기능입니다.
+
+  1. HEALTHCHECK 상세 설명
+
+  가. 왜 사용하나요?
+
+   - 애플리케이션의 실제 상태 파악: 웹 서버가 떴지만 내부 오류로 500 에러만 반환하거나, 데이터베이스
+     프로세스는 살아있지만 연결을 받지 못하는 상태일 수 있습니다. HEALTHCHECK는 이런 "좀비 상태"의
+     컨테이너를 감지할 수 있습니다.
+   - 컨테이너 오케스트레이션과의 연동: 쿠버네티스(Kubernetes), 도커 스웜(Docker Swarm) 같은 오케스트레이션
+     도구는 컨테이너의 HEALTHCHECK 상태를 모니터링합니다. 만약 상태가 unhealthy로 바뀌면, 해당 컨테이너로의
+     트래픽 전송을 중단하고, 설정에 따라 자동으로 컨테이너를 재시작하거나 교체하는 등 자동
+     복구(Self-healing)를 수행합니다.
+   - 무중단 배포: 새로운 버전의 컨테이너를 배포할 때, HEALTHCHECK가 healthy 상태가 되는 것을 확인한 후에
+     구버전 컨테이너를 내리는 방식으로 안전하고 점진적인 배포가 가능해집니다.
+
+  나. 동작 원리
+
+   1. 컨테이너가 시작되면, HEALTHCHECK 상태는 `starting`이 됩니다.
+   2. --start-period 시간 동안은 HEALTHCHECK가 실패해도 unhealthy로 간주하지 않습니다. 
+      (애플리케이션이 초기화될 시간을 주는 것)
+   3. --start-period가 지나면, Docker는 --interval 주기로 HEALTHCHECK에 정의된 명령어를 실행합니다.
+   4. 명령어의 종료 코드(Exit Code)에 따라 상태가 결정됩니다.
+       - `0`: 성공 (healthy)
+       - `1`: 실패 (unhealthy)
+   5. 명령어가 --timeout 시간 내에 끝나지 않으면 실패로 간주합니다.
+   6. 연속으로 --retries 횟수만큼 실패하면, 컨테이너의 최종 상태는 `unhealthy`가 됩니다.
+   7. 한 번이라도 성공하면, 상태는 즉시 `healthy`가 됩니다.
+
+  다. 문법(Dockerfile)
+
+   1 HEALTHCHECK [OPTIONS] CMD <command>
+   2 # 또는
+   3 HEALTHCHECK NONE
+
+   - `CMD <command>`: 컨테이너 내부에서 실행할 건강 상태 확인 명령어입니다.
+   - `NONE`: 상위 이미지(Base Image)에 정의된 HEALTHCHECK 설정을 비활성화합니다.
+
+  주요 옵션:
+
+
+  ┌─────────────────────────┬───────────────────────────────────────────────────────────────────┬────────┐
+  │ 옵션                    │ 설명                                                              │ 기본값 │
+  ├─────────────────────────┼───────────────────────────────────────────────────────────────────┼────────┤
+  │ --interval=DURATION     │ 건강 상태 확인 명령어의 실행 주기                                 │  30s   │
+  │ --timeout=DURATION      │ 명령어 실행 후 응답을 기다리는 최대 시간                          │  30s   │
+  │ --start-period=DURATION │ 컨테이너 시작 후, 상태 확인 실패를 unhealthy로 간주하지 않을 시간 │   0s   │
+  │ --retries=N             │ unhealthy 상태로 최종 판단하기까지의 연속 실패 횟수               │   3    │
+  └─────────────────────────┴───────────────────────────────────────────────────────────────────┴────────┘
+
+  
+
+
+  2. 상황별 예제
+
+  예제 1: 웹 서버의 HTTP 응답 확인 (가장 일반적인 경우)
+
+  웹 서버가 특정 경로(e.g., /health)에서 200 OK 응답을 주는지 확인합니다.
+
+  상황: Python Flask 웹 애플리케이션이 80번 포트에서 실행 중입니다.
+
+  작업 폴더 생성 후 이동 
+  mkdir -p ~/health_exam/web && cd ~/health_exam/web
+
+  dockerfile 생성 
+
+  vi Dockerfile
+  #--------------------------------------------------
+
+  # 1. 베이스 이미지 설정
+  FROM python:3.9-slim
+
+  # 2. 작업 디렉토리 설정
+  WORKDIR /app
+
+  # 3. 의존성 설치
+  COPY requirements.txt .
+  RUN pip install --no-cache-dir -r requirements.txt
+
+  # 4. 애플리케이션 코드 복사
+  COPY . .
+
+  # 5. HEALTHCHECK 설정
+  # --interval: 확인 간격 (기본값: 30초)
+  # --timeout: 응답 대기 시간 (기본값: 30초)
+  # --start-period: 컨테이너 시작 후 첫 확인까지의 유예 시간 (기본값: 0초)
+  # --retries: 실패 시 재시도 횟수 (기본값: 3번)
+  HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
+    CMD curl -f http://localhost:8000/health || exit 1
+
+  # 6. 애플리케이션 실행
+  CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
+
+  #-------------------------------------------------
+   
+  requirements.txt
+  FastAPI 애플리케이션을 실행하는 데 필요한 파이썬 패키지를 지정합니다.
+
+  vi requirements.txt
+  #-------------------------------------------------
+  fastapi
+  uvicorn
+  #-------------------------------------------------
+
+  main.py
+  간단한 FastAPI 애플리케이션을 만듭니다. 루트 경로 (/)와 Docker가 상태를 확인할 수 있는 /health 경로를
+  포함합니다.
+
+  vi main.py
+  #-------------------------------------
+  from fastapi import FastAPI
+
+  app = FastAPI()
+
+  @app.get("/")
+  def read_root():
+      return {"message": "Hello, World!"}
+
+  @app.get("/health")
+  def health_check():
+      """
+      Docker HEALTHCHECK를 위한 간단한 엔드포인트.
+      성공적으로 응답하면 'ok' 상태를 반환합니다.
+      """
+      return {"status": "ok"}
+  #-------------------------------------
+
+  Docker 이미지를 빌드한다 
+    docker build -t fastapi-healthcheck-app .
+  
+  생성한 이미지를 이용하여 컨테이너를 실행한다 
+    docker run -d -p 8000:8000 --name my-app fastapi-healthcheck-app
+ 
+  컨테이너 목록을 확인한다(STATUS 부분 확인)
+    docker ps -a 
+    
+
+
+   예제 2: 데이터베이스 연결 확인
+
+  데이터베이스 서버가 클라이언트의 연결 요청을 받을 준비가 되었는지 확인합니다.
+
+  상황: mariadb 데이터베이스 서버를 실행합니다.
+  
+  작업 폴더 생성 후 이동 
+    mkdir -p ~/health_exam/dbserver && cd ~/health_exam/dbserver
+  
+  마리아디비를 컨테이너로 실행한다
+  docker run -d \
+    --name health_exam_db \
+    -p 3306:3306 \
+    -e MARIADB_ROOT_PASSWORD=1004 \
+    -e MARIADB_DATABASE=health_exam \
+    -e MARIADB_USER=kosa \
+    -e MARIADB_PASSWORD=1004 \
+    mariadb:latest
+
+   수동으로 해당 마리아 디비가 실행 중인지 확인 할 수 있는 명령어
+     docker exec -it health_exam_db bash
+     apt update
+     apt mysql-client #mysqladmin 설치 
+     mysqladmin ping -h localhost -u root -p"1004"
+     #컨터이너에서 bash 종료
+     exit
+     
+   위에서 작업한 것을 자동으로 진행하기위해 docker 파일을 생성하여 진행한다
+   
+   vi Dockerfile 
+   ------------------------------------------------------------------
+    # MariaDB 최신 버전을 기반 이미지로 사용합니다.
+    FROM mariadb:latest
+
+    # 컨테이너의 상태를 주기적으로 확인하는 헬스체크를 설정합니다.
+    # 환경 변수는 'docker run' 명령을 통해 컨테이너 실행 시점에 전달됩니다.
+    # 15초 간격으로, 3초의 타임아웃을 가지고, 5번의 재시도 기회를 줍니다. 
+    # mysqladmin ping: 서버가 살아있는지 확인하는 명령어입니다.
+    # -u root -p${MARIADB_ROOT_PASSWORD}: root 사용자와 환경변수로 전달된 비밀번호를 사용합니다.
+    # 환경변수($MARIADB_ROOT_PASSWORD)를 HEALTHCHECK 명령 내에서 사용하기 위해 쉘을 통해 실행합니다.
+    HEALTHCHECK --interval=5s --timeout=3s --start-period=30s --retries=3 \
+      CMD mysqladmin ping -h localhost -u root -p"$MARIADB_ROOT_PASSWORD"
+   ------------------------------------------------------------------
+    
+    
+    Dockerfile을 사용하여 이미지를 빌드하고 컨테이너로 실행 하고 확인 할 수 있는 스크리트를 작성함 
+    vi mariadb.sh 
+    ----------------------------------------------------
+    #!/bin/bash
+
+    # 현재 디렉토리의 Dockerfile을 사용하여 Docker 이미지를 빌드합니다.
+    # 이미지 태그는 health_exam_db_image로 지정합니다.
+    docker build -t health_exam_db_image .
+
+    # 만약 기존에 health_exam_db 이름의 컨테이너가 실행 중이라면, 오류를 무시하고 강제로 삭제합니다.
+    docker rm -f health_exam_db 2>/dev/null
+
+    # 환경 변수를 설정하여 Docker 컨테이너를 백그라운드에서 실행합니다.
+    docker run -d \
+        --name health_exam_db \
+        -p 3306:3306 \
+        -e MARIADB_ROOT_PASSWORD=1004 \
+        -e MARIADB_DATABASE=health_exam \
+        -e MARIADB_USER=kosa \
+        -e MARIADB_PASSWORD=1004 \
+        health_exam_db_image
+
+    # "health_exam_db"라는 이름의 컨테이너가 실행 중인지 확인합니다.
+    docker ps -f "name=health_exam_db"
+    ----------------------------------------------------
+    
+     
+  예제 4: 사용자 정의 스크립트로 복잡한 상태 확인
+
+  애플리케이션의 상태가 단순히 포트나 HTTP 응답만으로 확인되지 않는 복잡한 경우, 별도의 헬스체크
+  스크립트를 작성하여 사용합니다.
+
+  작업 폴더 생성 후 이동 
+  mkdir -p ~/health_exam/worker  && cd ~/health_exam/worker
+
+  1. 메인 애플리케이션
+  이 스크립트는 컨테이너가 시작될 때 실행되는 메인 프로세스입니다. 
+  간단히 백그라운드에서 무한정 대기하는 sleep 명령을 실행하여 서비스가 계속 동작하는 것처럼 시뮬레이션합니다.
+
+  vi app.sh
+  --------------------------------------------------------------
+  #!/bin/sh
+
+  # 메인 애플리케이션 프로세스를 백그라운드에서 시작합니다.
+  sleep infinity &
+  PID=$!
+
+  echo "메인 프로세스가 PID $PID 로 시작되었습니다."
+
+  # 메인 프로세스가 종료될 때까지 기다립니다.
+  # 프로세스가 강제 종료되어도 스크립트는 계속 실행됩니다.
+  wait $PID
+
+  # 이 메시지는 메인 프로세스가 종료될 때 출력됩니다.
+  echo "메인 프로세스가 종료되었습니다. 이제 컨테이너는 비정상 상태가 됩니다."
+
+  # 컨테이너가 비정상 상태로 보고될 수 있도록 계속 실행합니다.
+  while true; do
+    sleep 1
+  done
+  --------------------------------------------------------------
+
+  2. 상태 체크 스크립트
+  이 스크립트는 HEALTHCHECK에 의해 실행되어 app.sh가 실행한 sleep infinity 프로세스가 현재 실행 중인지
+  확인합니다.
+   - 프로세스가 존재하면 종료 코드 0 (성공)을 반환합니다.
+   - 프로세스가 없으면 종료 코드 1 (실패)을 반환합니다.
+
+  vi healthcheck.sh
+  --------------------------------------------------------------
+  #!/bin/sh
+  echo "Running health check..."
+  # 'sleep infinity' 문자열을 포함하는 프로세스가 실행 중인지 확인합니다.
+  if pgrep -f "sleep infinity"; then
+    echo "Health check PASSED: Process is running."
+    exit 0
+  else
+    echo "Health check FAILED: Process is not running."
+    exit 1
+  fi
+  --------------------------------------------------------------
+  
+  pgrep 명령어 
+  pgrep은 프로세스 검색에 특화되어 있어 훨씬 간결하고 정확합니다.
+
+  예를 들어 현재 시스템에 2대의 nginx 가 실행 중일때 2개의 pid를 찾을 때 사용 
+    pgrep "nginx"
+
+  장점:
+   * 출력이 깔끔합니다. 오직 PID만 반환하므로 스크립트에서 바로 변수에 담아 사용하기 매우 편리합니다. (예:
+     kill $(pgrep nginx))
+   * pgrep 자기 자신을 찾는 문제가 발생하지 않습니다.
+   * 프로세스 검색에 유용한 다양한 옵션을 제공합니다.
+       * -f: 프로세스 이름뿐만 아니라 실행된 전체 명령어 라인에서 검색합니다. 
+          (Dockerfile 예제의 sleep infinity를 찾을 때 사용)
+       * -l: PID와 함께 프로세스 이름도 보여줍니다.
+       * -u <username>: 특정 사용자가 실행한 프로세스만 검색합니다.
+  
+  3. Dockerfile 파일 생성 
+  app.sh와 healthcheck.sh 스크립트를 컨테이너에 복사하고, HEALTHCHECK 지시어를 설정합니다.
+ 
+  vi Dockerfile
+  --------------------------------------------------------------
+   # 경량 베이스 이미지 사용
+   FROM alpine:latest
+  
+   # 작업 디렉토리 설정
+   WORKDIR /app
+  
+   # 스크립트 파일들을 컨테이너 안으로 복사
+   COPY app.sh .
+   COPY healthcheck.sh .
+  
+   # 스크립트들이 실행 가능하도록 권한 부여
+   RUN chmod +x app.sh healthcheck.sh
+  
+   # 컨테이너 상태를 검사하는 방법 정의
+   # --interval=10s: 10초마다 검사
+   # --timeout=3s: 검사 명령이 3초 안에 응답해야 함
+   # --start-period=5s: 컨테이너 시작 후 5초 뒤부터 상태 검사 시작
+   # --retries=3: 3번 연속 실패하면 'unhealthy' 상태로 변경
+   HEALTHCHECK --interval=10s --timeout=3s --start-period=5s --retries=3 \
+     CMD ./healthcheck.sh
+  
+   # 컨테이너가 시작될 때 실행할 기본 명령어
+   CMD ["./app.sh"]
+  --------------------------------------------------------------
+  
+  4. Docker 이미지를 생성한다
+    docker build -t healthcheck-example . 
+   
+  5. 컨테이너를 실행
+    docker run -d --name my-app healthcheck-example
+  
+  6. 실행 중인 프로세스 번호를 확인 한다 (대기 시간 확인)
+    docker exec my-app pgrep -f sleep
+    
+  7. 컨테이너의 목록 상태를 확인한다
+    Docker ps -a
+    
+  8. 6의 결과가 대기 시간 초임, 때문에 해당 시간이 지난 다음 다시 명령어 실행하여 상태를 확인한다
+    Docker ps -a
+  
+  
+  
