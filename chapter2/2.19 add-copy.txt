@@ -1,0 +1,164 @@
+ 1. COPY 명령어
+
+  COPY는 가장 직관적이고 기본적인 파일 복사 명령어입니다. 호스트 컴퓨터(빌드 컨텍스트)에 있는 파일이나
+  디렉터리를 컨테이너 이미지 안으로 복사하는 역할만 수행합니다.
+
+  주요 특징:
+   * 단순히 파일/디렉터리를 복사합니다.
+   * 소스 경로(<src>)는 빌드가 실행되는 컨텍스트 경로 기준입니다.
+   * 대상 경로(<dest>)는 컨테이너 이미지 내부의 절대 경로입니다.
+
+  기본 문법:
+
+   1 COPY [--chown=<user>:<group>] <src>... <dest>
+   2 COPY [--chown=<user>:<group>] ["<src>",... "<dest>"]
+
+  ---
+
+  2. ADD 명령어
+
+  ADD는 COPY의 기능을 포함하면서 몇 가지 추가적인 "마법 같은" 기능을 가지고 있습니다.
+
+  주요 특징:
+   1. 파일/디렉터리 복사: COPY와 동일하게 로컬 파일을 이미지로 복사할 수 있습니다.
+   2. URL 지원: 소스 경로(<src>)에 URL을 지정하면, 해당 URL에서 파일을 다운로드하여 이미지의 대상
+      경로(<dest>)에 복사합니다.
+   3. 자동 압축 해제: 소스 파일이 tar, gzip, bzip2 등 인식 가능한 압축 파일일 경우, 대상 경로(<dest>)에
+      파일이 아닌 디렉터리로 압축을 해제합니다.
+
+  기본 문법:
+
+   1 ADD [--chown=<user>:<group>] <src>... <dest>
+   2 ADD [--chown=<user>:<group>] ["<src>",... "<dest>"]
+
+  ---
+
+  3. ADD와 COPY의 핵심 차이점 및 권장 사항
+
+
+  ┌─────────────────────────┬──────┬─────┬────────────────────────────────────────────────────┐
+  │ 기능                    │ COPY │ ADD │ 설명                                               │
+  ├─────────────────────────┼──────┼─────┼────────────────────────────────────────────────────┤
+  │ 로컬 파일/디렉터리 복사 │ O    │ O   │ 가장 기본적인 기능입니다.                          │
+  │ URL에서 파일 다운로드   │ X    │ O   │ ADD는 URL을 소스로 사용할 수 있습니다.             │
+  │ 압축 파일 자동 해제     │ X    │ O   │ ADD는 특정 형식의 압축 파일을 자동으로 해제합니다. │
+  └─────────────────────────┴──────┴─────┴────────────────────────────────────────────────────┘
+
+  왜 COPY를 권장할까요?
+
+   1. 명확성 (Clarity): COPY는 "파일을 복사한다"는 단 하나의 역할만 하므로 Dockerfile을 읽는 누구나 그 의도를
+      명확하게 파악할 수 있습니다. 반면 ADD는 압축을 풀 수도, URL에서 다운로드할 수도 있어 예기치 않은 동작을
+      유발할 수 있습니다.
+   2. 보안 (Security): ADD를 사용해 URL에서 파일을 다운로드하는 것은 보안상 위험할 수 있습니다. 중간자
+      공격(Man-in-the-middle) 등으로 악성 파일이 다운로드될 수 있습니다. 파일을 다운로드해야 한다면, RUN
+      명령어와 curl 또는 wget을 함께 사용하고, 다운로드한 파일의 체크섬(checksum)을 확인하는 것이 훨씬
+      안전합니다.
+   3. 캐시 관리 (Cache Management): ADD는 URL의 내용이 변경되었는지 확인하지 않고 URL 문자열 자체만 보기
+      때문에, 원격 파일이 변경되어도 Docker 빌드 캐시가 이를 인지하지 못해 이전 버전의 파일을 계속 사용할 수
+      있습니다. RUN curl을 사용하면 캐시를 더 명시적으로 제어할 수 있습니다.
+
+  > 결론: COPY를 기본으로 사용하고, ADD의 자동 압축 해제 기능이 꼭 필요한 경우에만 ADD를 사용하세요. URL
+  다운로드는 RUN과 curl/wget 조합을 사용하는 것이 좋습니다.
+
+  ---
+
+  4. 이해하기 쉬운 예제
+
+  다음과 같은 프로젝트 구조가 있다고 가정해 보겠습니다.
+
+    add-copy/
+    ├── Dockerfile
+    ├── app
+    │   └── main.py
+    └── assets
+        ├── index.html
+        ├── static.tar.gz
+        └── style.css
+        
+
+  예제 1: ADD-COPY 사용 
+  vi Dockerfile
+  -----------------------------------------------------------
+    # 베이스 이미지
+    FROM python:3.9-slim
+
+    # 의존성 설치
+    RUN pip install Flask
+
+    # --- COPY 명령어 예제 ---
+    # 파이썬 애플리케이션 파일을 컨테이너로 복사합니다.
+    # 단순한 파일을 복사할 때 권장되는 방식입니다.
+    WORKDIR /app
+    COPY app/main.py .
+
+    # --- ADD 명령어 예제 ---
+    # 예제 1: 로컬 압축 파일을 추가하고 자동으로 압축을 해제합니다.
+    # `static.tar.gz` 파일은 `/app/static` 디렉터리에 압축이 해제될 것입니다.
+    ADD assets/static.tar.gz /app/static/
+
+    # 예제 2 (주석 처리됨): URL로부터 파일을 추가합니다.
+    # 이 줄의 주석을 해제하면, Docker는 파일을 다운로드하여 컨테이너에 저장합니다.
+    # ADD https://www.docker.com/favicon.ico /app/static/docker-favicon.ico
+
+    # 앱이 실행되는 포트를 노출합니다.
+    EXPOSE 8080
+
+    # 애플리케이션 실행 명령어
+    CMD ["python", "main.py"]
+  -----------------------------------------------------------
+
+  vi main.py
+  -----------------------------------------------------------
+    from flask import Flask, send_from_directory
+
+    app = Flask(__name__, static_folder='/app/static')
+
+    @app.route('/')
+    def hello_gemini():
+        return "Hello, Gemini! This file was copied using the COPY command."
+
+    @app.route('/static/<path:path>')
+    def send_static(path):
+        return send_from_directory('/app/static', path)
+
+    if __name__ == '__main__':
+        app.run(host='0.0.0.0', port=8080)
+
+  -----------------------------------------------------------
+  
+  vi assets/index.html
+  -----------------------------------------------------------
+  <html>
+  <head>
+    <title>ADD vs COPY</title>
+    <link rel="stylesheet" type="text/css" href="style.css">
+  </head>
+  <body>
+    <h1>This is a static site.</h1>
+    <p>These files were automatically extracted from a tarball using the ADD command.</p>
+  </body>
+  </html>
+  -----------------------------------------------------------
+  
+  
+  vi assets/style.css
+  -----------------------------------------------------------
+  body {
+    background-color: #f0f0f0;
+    font-family: sans-serif;
+  }
+  -----------------------------------------------------------
+  
+  gz로 assets 폴더 앞축한다 
+   tar -zcvf assets.tar.gz assets
+  
+  Docker 이미지를 생성한다
+    docker build -t add-copy .
+  
+  생성된 이미지를 컨테이너로 실행한다 
+  docker run --name add-copy -p 8080:8080 add-copy 
+  
+  curl 로 http://localhost:8080/ , http://localhost:8080/static/index.html, http://localhost:8080/static/style.css을 요청하여 결과를 확인한다 
+  
+  
+  
