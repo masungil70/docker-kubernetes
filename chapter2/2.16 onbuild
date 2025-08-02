@@ -1,0 +1,154 @@
+ONBUILD
+
+ ONBUILD는 Dockerfile에서 사용하는 특별한 명령어로, "베이스 이미지를 만드는 시점"이 아니라, "그 베이스
+  이미지를 기반으로 새로운 이미지를 만드는 시점"에 실행될 명령을 미리 지정하는 역할을 합니다.
+
+  쉽게 말해, 자식 이미지(child image)가 빌드될 때 자동으로 실행되는 "트리거(trigger)"를 부모 이미지(base
+  image)에거 구현하는 것입니다.
+
+  1. ONBUILD 상세 설명
+
+  핵심 개념
+   - 실행 시점: ONBUILD 명령어는 해당 Dockerfile을 빌드할 때는 아무것도 실행하지 않습니다. 
+     단지 이미지의 메타데이터에 "이 이미지를 FROM으로 사용할 때, 이 명령을 실행하라"고 저장만 해둡니다.
+   - 트리거 실행: 다른 Dockerfile에서 FROM <ONBUILD가 포함된 이미지> 구문을 사용하여 새로운 
+     이미지 빌드할 때, FROM 명령어 바로 다음에 ONBUILD로 지정된 명령어들이 순서대로 실행됩니다.
+   - 주요 용도: 특정 프레임워크나 언어에 맞는 "빌드 환경 베이스 이미지"를 만들 때 유용합니다. 
+     예를 들어, 모든 Node.js 프로젝트는 package.json을 복사하고 npm install을 실행해야 하는데, 이 공통 작업을 ONBUILD로 정의해두면 각 프로젝트의 Dockerfile을 매우 간결하게 유지할 수 있습니다.
+
+  동작 원리
+   1. 베이스 이미지 빌드 (`docker build -t my-base-image .`)
+       - Dockerfile에 ONBUILD COPY . /app 이라는 줄이 있습니다.
+       - 빌드 과정에서 이 줄은 실행되지 않고, 이미지의 메타데이터에 "ONBUILD: COPY . /app" 라는 정보가
+         기록됩니다. (docker inspect my-base-image 명령으로 확인 가능)
+
+   2. 애플리케이션 이미지 빌드 (`docker build -t my-app .`)
+       - 애플리케이션의 Dockerfile은 FROM my-base-image 로 시작합니다.
+       - Docker는 my-base-image에 ONBUILD 트리거가 있는지 확인합니다.
+       - 트리거가 있다면, 애플리케이션 Dockerfile의 다른 명령어를 실행하기 전에 ONBUILD로 
+         지정됐던 COPY . /app 명령을 먼저 실행합니다.
+
+  제약사항 및 특징
+   - ONBUILD 다음에는 RUN, COPY, ADD 등 대부분의 Dockerfile 명령어를 사용할 수 있습니다.
+   - 하지만 FROM, MAINTAINER(deprecated), ONBUILD 자체는 사용할 수 없습니다. (무한 루프 방지)
+   - ONBUILD로 지정된 명령어들은 자식 Dockerfile의 명령어들보다 먼저 실행됩니다.
+   - 최근에는 Multi-stage builds 방식이 더 명시적이고 유연하여 ONBUILD의 사용 빈도가 줄어드는 추세입니다.
+     Multi-stage builds는 빌드용 환경과 최종 실행용 환경을 명확히 분리할 수 있어 더 선호됩니다.
+
+  2. ONBUILD 예제 (Python 애플리케이션 빌드)
+
+  여기서는 소스코드만 넣으면 자동으로 의존성을 설치하고 빌드되는 Python 베이스 이미지를 ONBUILD를 이용해
+  만들어 보겠습니다.
+
+  단계 1: 작업 폴더 생성
+    mkdir ~/onbuild_exam
+    cd ~/onbuild_exam
+    mkdir ~/base
+    cd ~/base    
+
+  단계 2: 베이스 이미지 생성 (Builder 역할)
+
+  먼저, 공통 빌드 작업을 정의할 Dockerfile.base 파일을 작성합니다.
+
+    vi Dockerfile.base
+
+    # 1. Python 공식 이미지를 기반으로 시작
+    FROM python:3.9-slim
+
+    # 2. 작업 디렉토리 설정
+    WORKDIR /usr/src/app
+
+    # 3. ONBUILD 트리거 설정
+    #    이 이미지를 사용하는 자식 이미지가 빌드될 때 아래 명령들이 실행됩니다.
+    ONBUILD COPY requirements.txt ./
+    ONBUILD RUN pip install --no-cache-dir -r requirements.txt
+    ONBUILD COPY . .
+
+    # 4. 애플리케이션이 사용할 포트 (참고용으로 명시)
+    EXPOSE 5000
+
+  설명:
+   - ONBUILD COPY requirements.txt ./: 먼저 requirements.txt 파일을 복사합니다.
+   - ONBUILD RUN pip install ...: 복사된 requirements.txt를 기반으로 의존성을 설치합니다.
+   - ONBUILD COPY . .: 마지막으로 애플리케이션의 전체 소스 코드를 /usr/src/app으로 복사합니다.
+
+  이제 이 Dockerfile로 베이스 이미지를 빌드합니다.
+
+   # 'my-python-builder' 라는 이름으로 베이스 이미지를 빌드합니다.
+   docker build -t my-python-builder -f Dockerfile.base .
+  (참고: 현재 디렉토리에 `requirements.txt` 등이 없어도 빌드는 성공합니다. `ONBUILD`는 지금 실행되지 않기
+  때문입니다.)
+
+  단계 3: 베이스 이미지를 사용하여 애플리케이션 이미지 생성
+
+  이제 위에서 만든 my-python-builder 이미지를 사용하여 간단한 Flask 웹 애플리케이션을 이미지로 만들어
+  보겠습니다.
+
+  먼저 간단한 Python 앱을 준비합니다.
+  mkdir ~/onbuild_exam/child
+  cd ~/onbuild_exam/child
+    
+  vi requirements.txt
+  Flask
+  gunicorn
+
+  vi app.py
+
+    from flask import Flask
+
+    app = Flask(__name__)
+
+    @app.route('/')
+    def hello():
+        return "Hello from Python ONBUILD!"
+
+    if __name__ == '__main__':
+        app.run(host='0.0.0.0', port=5000)
+
+  이제 이 애플리케이션을 위한 Dockerfile을 작성합니다. ONBUILD 덕분에 매우 간단해집니다.
+
+  vi Dockerfile
+
+  # 1. 우리가 만든 빌더 이미지를 FROM으로 지정
+  FROM my-python-builder
+  
+  # 2. 애플리케이션 실행 명령어만 지정
+  CMD ["python", "./app.py"]
+
+  설명:
+   - FROM my-python-builder: 이 한 줄만으로, 빌드 시점에 Dockerfile.base에 정의했던 ONBUILD 명령어 3개가
+     자동으로 실행됩니다.
+   - CMD ["python", "./app.py"]: 컨테이너가 시작될 때 실행할 최종 명령어만 정의해주면 됩니다.
+
+  이제 이 Dockerfile로 최종 애플리케이션 이미지를 빌드합니다.
+   # 'my-final-python-app' 이라는 이름으로 최종 앱 이미지를 빌드합니다.
+   docker build -t my-final-python-app .
+
+  빌드 로그를 보면 ONBUILD 명령어가 순서대로 실행되는 것을 확인할 수 있습니다.
+ => [internal] load build definition from Dockerfile                              0.0s
+ => => transferring dockerfile:                                                   0.0s
+ => [internal] load metadata for docker.io/library/my-python-builder:latest       0.0s
+ => [internal] load .dockerignore                                                 0.0s
+ => => transferring context: 2B                                                   0.0s
+ => CACHED [1/1] FROM docker.io/library/my-python-builder:latest                  0.0s
+ => [internal] load build context                                                 0.0s
+ => => transferring context: 336B                                                 0.0s
+ => [2/4] ONBUILD COPY requirements.txt ./                                        0.1s
+ => [3/4] ONBUILD RUN pip install --no-cache-dir -r requirements.txt              2.9s
+ => [4/4] ONBUILD COPY . .                                                        0.0s
+ => exporting to image                                                            0.1s
+ => => exporting layers                                                           0.1s
+ => => writing image sha256:95d87ab186e16352674a45323d1c2..                       0.0s
+ => => naming to   docker.io/library/my-final-python-app                          0.0s
+  
+  단계 4: 최종 이미지 실행
+
+   # 5000번 포트를 연결하여 컨테이너를 실행합니다.
+   docker run -p 5000:5000 my-final-python-app
+
+   curl http://localhost:5000
+   "Hello from Python ONBUILD!" 메시지가 표시되는 것을 확인할 수 있습니다.
+
+  
+  
+  
