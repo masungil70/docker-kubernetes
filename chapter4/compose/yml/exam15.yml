@@ -1,0 +1,20 @@
+# ---  문서 시작 ---
+# &default_env 라는 앵커로 공통 환경 변수 맵을 정의
+x-common-env: &default_env
+  DB_HOST: "db.example.com"
+  DB_USER: "user"
+  DB_PASS: "password"
+  CACHE_HOST: "cache.example.com"
+  CACHE_PORT: "6379"
+
+services:
+  api-server:
+    image: my-app
+    # *default_env 별칭으로 앵커를 참조하여 그대로 가져옴
+    environment: *default_env
+
+  worker:
+    image: my-app-worker
+    # 여기서도 동일하게 재사용
+    environment: *default_env
+# --- 문서의 끝 ---

@@ -1,0 +1,10 @@
+# ---  문서 시작 ---
+# 정수
+integer_value: 100
+
+# 실수
+float_value: 3.14159
+
+# 과학적 표기법
+scientific_notation: 1.23e+4  # 12300
+# --- 문서의 끝 ---

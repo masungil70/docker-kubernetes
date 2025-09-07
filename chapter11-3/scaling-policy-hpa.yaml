@@ -1,0 +1,43 @@
+# 이 YAML 파일은 스케일링 정책을 사용하는 HorizontalPodAutoscaler(HPA)를 정의합니다.
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: scaling-policy-hpa
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: simple-deployment
+  metrics:
+  - resource:
+      name: cpu
+      target:
+        averageUtilization: 50
+        type: Utilization
+    type: Resource
+  maxReplicas: 5
+  minReplicas: 1
+  # behavior는 스케일링 동작을 세밀하게 제어하는 정책을 정의합니다.
+  behavior:
+    # scaleDown은 파드 수를 줄일 때의 정책을 정의합니다.
+    scaleDown:
+      # stabilizationWindowSeconds는 스케일 다운 결정을 내리기 전에 상태를 안정화시키는 시간(초)입니다.
+      # HPA는 이 시간 동안 과거의 원하는 레플리카 수를 기반으로 스케일 다운 여부를 결정하여 급격한 스케일 다운을 방지합니다.
+      stabilizationWindowSeconds: 300
+      # policies는 스케일 다운 시 적용할 규칙 목록입니다.
+      policies:
+      # 60초 동안 최대 4개의 파드만 줄일 수 있습니다.
+      - type: Pods
+        value: 4
+        periodSeconds: 60
+      # 120초 동안 현재 레플리카의 10%만 줄일 수 있습니다.
+      - type: Percent
+        value: 10
+        periodSeconds: 120
+      # selectPolicy는 여러 정책 중 어떤 것을 적용할지 결정합니다. "Max"는 가장 큰 변화를 허용하는 정책을 선택합니다.
+      # 즉, 위 두 정책 중 더 많은 파드를 줄일 수 있는 정책을 선택합니다.
+      selectPolicy: Max
+
+    # scaleUp 항목에서도 동일한 스펙을 정의하여 스케일 업 동작을 제어할 수 있습니다.
+    # scaleUp:
+    # ...

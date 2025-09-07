@@ -1,0 +1,286 @@
+# Docker Compose 파일 버전 3.8을 사용합니다.
+# 이 파일은 단일 'docker-compose' 명령어뿐만 아니라, 여러 호스트에 걸쳐 컨테이너를 배포하는
+# 'docker stack deploy' (Docker Swarm) 명령어를 위해 작성되었습니다.
+version: '3.8'
+
+# 'services': 스택을 구성하는 각 서비스(컨테이너)들을 정의합니다.
+services:
+  # 'elasticsearch' 서비스: 로그 및 데이터를 저장하고 검색하는 데 사용되는 검색 엔진입니다.
+  elasticsearch:
+    # 'image': Elastic사의 공식 Elasticsearch 7.17.5 버전 이미지를 사용합니다.
+    image: docker.elastic.co/elasticsearch/elasticsearch:7.17.5
+    # 'environment': 컨테이너 내부 환경 변수를 설정합니다.
+    environment:
+      # 'discovery.type=single-node': 단일 노드 클러스터로 실행되도록 설정합니다.
+      # Swarm 환경이지만, 여기서는 Elasticsearch 클러스터를 구성하지 않고 단일 인스턴스로 사용합니다.
+      - discovery.type=single-node
+      # 'ES_JAVA_OPTS': Elasticsearch가 사용하는 JVM(Java Virtual Machine)의 옵션을 설정합니다.
+      # -Xms512m: 최소 힙 메모리를 512MB로 설정
+      # -Xmx512m: 최대 힙 메모리를 512MB로 설정
+      - "ES_JAVA_OPTS=-Xms512m -Xmx512m"
+    # 'volumes': 데이터 영속성을 위해 볼륨을 마운트합니다.
+    volumes:
+      # 'es_data'라는 네임드 볼륨을 Elasticsearch 데이터 디렉토리에 연결합니다.
+      - es_data:/usr/share/elasticsearch/data
+    # 'networks': 서비스가 연결될 네트워크를 지정합니다.
+    networks:
+      - logging-net
+    # 'deploy': Docker Swarm 모드에서만 사용되는 배포 관련 설정을 정의합니다.
+    deploy:
+      # 'placement': 서비스 컨테이너가 어느 노드에 배포될지에 대한 제약 조건을 설정합니다.
+      placement:
+        constraints:
+          # Swarm 클러스터의 'manager' 역할을 가진 노드에만 이 서비스를 배포합니다.
+          - node.role == manager
+
+  # 'kibana' 서비스: Elasticsearch에 저장된 데이터를 시각화하고 탐색하기 위한 웹 인터페이스입니다.
+  kibana:
+    # 'image': Elastic사의 공식 Kibana 7.17.5 버전 이미지를 사용합니다.
+    image: docker.elastic.co/kibana/kibana:7.17.5
+    # 'ports': 호스트와 컨테이너 간의 포트를 매핑합니다.
+    ports:
+      # 호스트의 5601 포트를 컨테이너의 5601 포트로 연결하여 외부에서 Kibana 대시보드에 접근할 수 있게 합니다.
+      - "5601:5601"
+    # 'environment': Kibana 설정에 필요한 환경 변수를 정의합니다.
+    environment:
+      # 'ELASTICSEARCH_HOSTS': 연결할 Elasticsearch 인스턴스의 주소를 지정합니다.
+      # 'elasticsearch:9200'은 같은 Docker 네트워크에 있는 'elasticsearch' 서비스의 9200 포트를 가리킵니다.
+      ELASTICSEARCH_HOSTS: '["http://elasticsearch:9200"]'
+    # 'networks': 'elasticsearch'와 통신하기 위해 'logging-net' 네트워크에 연결합니다.
+    networks:
+      - logging-net
+    # 'depends_on': 서비스 시작 순서를 제어합니다. Kibana는 Elasticsearch가 시작된 후에 시작됩니다.
+    depends_on:
+      - elasticsearch
+
+  # 'fluentd-svr' 서비스: 여러 소스로부터 로그를 수집하여 다른 곳(여기서는 Elasticsearch)으로 전송하는 로그 수집기입니다.
+  fluentd-svr:
+    # 'image': 사용자가 직접 빌드하여 레지스트리에 푸시한 커스텀 Fluentd 이미지를 사용합니다.
+    # '${DOCKER_REGISTRY_USER}'는 환경 변수에서 값을 가져옵니다.
+    image: ${DOCKER_REGISTRY_USER}/fluentd-custom:latest
+    # 'networks': 다른 로깅 관련 서비스와 통신하기 위해 'logging-net'에 연결합니다.
+    networks:
+      - logging-net
+    # 'ports': 로그 수집을 위해 TCP 및 UDP 포트를 엽니다.
+    ports:
+      - "24224:24224"
+      - "24224:24224/udp"
+    # 'configs': Docker Swarm의 Configs 기능을 사용하여 설정 파일을 컨테이너에 주입합니다.
+    configs:
+      # 'fluentd_config'라는 이름의 Docker Config를 컨테이너 내부의 '/fluentd/etc/fluent.conf' 파일로 마운트합니다.
+      - source: fluentd_config
+        target: /fluentd/etc/fluent.conf # Mount as a single file
+    # 'depends_on': Elasticsearch가 실행된 후에 Fluentd가 시작되도록 합니다.
+    depends_on:
+      - elasticsearch
+    # 'deploy': 배포 전략을 정의합니다.
+    deploy:
+      # 'mode: global': Swarm 클러스터의 모든 노드에 이 서비스를 하나씩 배포합니다.
+      # 각 노드에서 발생하는 로그를 수집하기 위한 일반적인 패턴입니다.
+      mode: global
+
+  # 'db' 서비스: MariaDB 데이터베이스입니다.
+  db:
+    image: mariadb:10.5
+    environment:
+      MYSQL_ROOT_PASSWORD_FILE: /run/secrets/db_root_password
+      MYSQL_DATABASE: ${DB_NAME}
+      MYSQL_USER: ${DB_USER}
+      MYSQL_PASSWORD_FILE: /run/secrets/db_password
+    # 'secrets': Docker Swarm의 Secrets 기능을 사용하여 민감한 정보(비밀번호)를 안전하게 관리합니다.
+    secrets:
+      - db_root_password
+      - db_password
+    volumes:
+      # 'mariadb_data' 볼륨을 컨테이너의 데이터 디렉토리에 마운트합니다.
+      - mariadb_data:/var/lib/mysql
+    # 'networks': 여러 네트워크에 동시에 연결될 수 있습니다.
+    networks:
+      - backend-net # 백엔드 서비스와의 통신용
+      - logging-net # 로그 전송용
+    depends_on:
+      - fluentd-svr
+    # 'healthcheck': 컨테이너가 정상적으로 동작하는지 확인하는 방법을 정의합니다.
+    healthcheck:
+      # 'test': 실행할 명령어. mysqladmin ping으로 DB 서버의 응답을 확인합니다.
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "${DB_USER}", "-p$$(cat /run/secrets/db_password)"]
+      interval: 10s   # 10초마다 검사
+      timeout: 5s     # 5초 이상 응답이 없으면 실패
+      retries: 3      # 3번 재시도 후 최종 실패 처리
+      start_period: 30s # 컨테이너 시작 후 30초 동안은 healthcheck 실패를 무시
+    deploy:
+      placement:
+        constraints:
+          - node.role == manager
+      # 'resources': 컨테이너가 사용할 CPU와 메모리 자원을 제한하고 예약합니다.
+      resources:
+        # 'reservations': 최소한으로 보장받을 자원
+        reservations:
+          cpus: '0.50' # CPU 코어 50%
+          memory: 512M # 메모리 512MB
+        # 'limits': 최대로 사용할 수 있는 자원
+        limits:
+          cpus: '1.00' # CPU 코어 100%
+          memory: 1G   # 메모리 1GB
+    # 'logging': 컨테이너의 로그를 처리할 드라이버와 옵션을 설정합니다.
+    logging:
+      # 'driver: "fluentd"': Fluentd를 로그 드라이버로 사용합니다.
+      driver: "fluentd"
+      # 'options': Fluentd 드라이버에 전달할 옵션
+      options:
+        # 'fluentd-address': 로그를 전송할 Fluentd 서버의 주소
+        fluentd-address: 192.168.80.132:24224
+        # 'tag': 로그에 붙일 태그. 컨테이너 이름을 동적으로 포함시킵니다.
+        tag: "prod.db.{{.Name}}"
+
+  # 'backend' 서비스: 애플리케이션의 비즈니스 로직을 처리합니다.
+  backend:
+    # 'image': 운영 환경용으로 빌드된 백엔드 이미지입니다.
+    image: ${BACKEND_IMAGE_PROD}
+    environment:
+      DB_HOST: db
+      DB_NAME: ${DB_NAME}
+      DB_USER: ${DB_USER}
+      DB_PASSWORD_FILE: /run/secrets/db_password
+    secrets:
+      - db_password
+    networks:
+      - backend-net
+      - logging-net
+    healthcheck:
+      # '/health' 엔드포인트를 호출하여 서비스의 정상 상태를 확인합니다.
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
+    depends_on:
+      - db
+    deploy:
+      # 'replicas: 2': 이 서비스를 2개의 컨테이너(복제본)로 실행하여 가용성을 높입니다.
+      replicas: 2
+      # 'update_config': 서비스 업데이트 시 적용할 정책(롤링 업데이트)을 정의합니다.
+      update_config:
+        parallelism: 1      # 한 번에 1개의 컨테이너만 업데이트
+        delay: 10s          # 각 컨테이너 업데이트 사이에 10초 지연
+        order: start-first  # 새 컨테이너를 먼저 시작하고, 정상 실행되면 이전 컨테이너를 중지
+        failure_action: rollback # 업데이트 실패 시 이전 버전으로 롤백
+      # 'rollback_config': 롤백 시 적용할 정책을 정의합니다.
+      rollback_config:
+        parallelism: 1      # 한 번에 1개의 컨테이너만 롤백
+        order: stop-first   # 이전(실패한) 컨테이너를 먼저 중지하고, 이전 버전의 컨테이너를 시작
+      resources:
+        reservations:
+          cpus: '0.25'
+          memory: 256M
+        limits:
+          cpus: '0.50'
+          memory: 512M
+    logging:
+      driver: "fluentd"
+      options:
+        fluentd-address: 192.168.80.132:24224
+        tag: "prod.backend.{{.Name}}"
+
+  # 'nginx' 서비스: 웹 서버 및 리버스 프록시. 사용자 요청을 백엔드로 전달합니다.
+  nginx:
+    image: nginx:latest
+    ports:
+      # '80:80': 호스트의 80 포트(HTTP 기본 포트)를 컨테이너의 80 포트로 연결합니다.
+      - "80:80"
+    configs:
+      # 'nginx_config' Docker Config를 Nginx 설정 파일로 마운트합니다.
+      - source: nginx_config
+        target: /etc/nginx/nginx.conf
+    volumes:
+      # 'frontend_data' 볼륨을 Nginx의 정적 파일 제공 디렉토리에 읽기 전용(:ro)으로 마운트합니다.
+      - frontend_data:/usr/share/nginx/html:ro
+    networks:
+      - frontend-net # 외부 사용자와의 통신용
+      - backend-net  # 백엔드 서비스와의 통신용
+      - logging-net  # 로그 전송용
+    # 'depends_on': Nginx는 백엔드 서비스가 시작된 후에 시작되어야 합니다.
+    depends_on:
+      - backend
+    # 'logging': Nginx의 로그도 Fluentd로 전송합니다.
+    logging:
+      driver: "fluentd"
+      options:
+        fluentd-address: 192.168.80.132:24224
+        tag: "prod.nginx.{{.Name}}"
+    # 'deploy': Nginx 서비스의 배포 설정을 정의합니다.
+    deploy:
+      # 'replicas: 2': Nginx 컨테이너를 2개 실행하여 웹 트래픽을 분산하고 가용성을 확보합니다.
+      replicas: 2
+      # 'update_config': 롤링 업데이트 정책을 설정합니다.
+      update_config:
+        parallelism: 1
+        delay: 10s
+        order: start-first
+        failure_action: rollback
+      # 'resources': Nginx 서비스에 할당할 자원을 정의합니다.
+      resources:
+        reservations:
+          cpus: '0.10'
+          memory: 128M
+        limits:
+          cpus: '0.25'
+          memory: 256M
+
+# 'volumes': 이 스택에서 사용할 볼륨들을 정의합니다.
+volumes:
+  # 'mariadb_data': MariaDB 데이터를 저장할 볼륨입니다.
+  mariadb_data:
+    # 'driver_opts': 볼륨 드라이버에 특정 옵션을 전달합니다.
+    driver_opts:
+      type: none # 드라이버 타입을 지정하지 않고,
+      o: bind    # bind mount를 사용하도록 설정합니다.
+      # 'device': 호스트의 '/mnt/ssd/data' 디렉토리를 컨테이너의 볼륨으로 사용합니다.
+      # 이는 데이터가 저장될 위치를 명확하게 제어하기 위함입니다.
+      device: /mnt/ssd/data
+  # 'frontend_data': 프론트엔드 정적 파일을 저장할 볼륨입니다.
+  frontend_data:
+    driver_opts:
+      type: none
+      o: bind
+      # 'device': 호스트의 '/mnt/nfs_share/nginx_html' 디렉토리를 사용합니다.
+      # NFS 공유 디렉토리를 사용하면 여러 노드에서 동일한 프론트엔드 파일을 공유할 수 있습니다.
+      device: /mnt/nfs_share/nginx_html
+  # 'es_data': Elasticsearch 데이터를 저장할 볼륨입니다.
+  # 별도 옵션이 없으면 Docker가 관리하는 기본 로컬 드라이버를 사용합니다.
+  es_data:
+
+# 'configs': 이 스택에서 사용할 설정 파일들을 정의합니다.
+configs:
+  # 'nginx_config': Nginx 설정 파일입니다.
+  nginx_config:
+    # 'external: true': 이 설정 파일이 Docker 외부에 이미 생성되어 있음을 의미합니다.
+    # 'docker config create nginx_config <file_path>' 명령어로 미리 생성해야 합니다.
+    external: true
+  # 'fluentd_config': Fluentd 설정 파일입니다.
+  fluentd_config:
+    external: true
+
+# 'secrets': 이 스택에서 사용할 민감한 정보들을 정의합니다.
+secrets:
+  # 'db_root_password': MariaDB root 비밀번호입니다.
+  db_root_password:
+    # 'external: true': 이 시크릿이 Docker 외부에 이미 생성되어 있음을 의미합니다.
+    # 'docker secret create db_root_password <file_path>' 명령어로 미리 생성해야 합니다.
+    external: true
+  # 'db_password': MariaDB 사용자 비밀번호입니다.
+  db_password:
+    external: true
+
+# 'networks': 이 스택에서 사용할 네트워크들을 정의합니다.
+networks:
+  # 'frontend-net': 외부 트래픽을 처리하기 위한 네트워크입니다.
+  frontend-net:
+    # 'driver: overlay': 여러 호스트(노드)에 걸쳐 컨테이너들이 통신할 수 있는 오버레이 네트워크를 사용합니다.
+    driver: overlay
+  # 'backend-net': 내부 서비스(백엔드, DB) 간의 통신을 위한 네트워크입니다.
+  backend-net:
+    driver: overlay
+  # 'logging-net': 로그 수집 및 전송을 위한 네트워크입니다.
+  logging-net:
+    driver: overlay

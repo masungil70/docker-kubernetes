@@ -1,0 +1,28 @@
+# my-ingress.yaml
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: my-app-ingress
+  annotations:
+    # 경로 재작성(Rewrite) 활성화. /apple -> / 로 전달
+    nginx.ingress.kubernetes.io/rewrite-target: /
+spec:
+  # NGINX Ingress Controller를 사용함을 명시
+  ingressClassName: "nginx"
+  rules:
+  - http:
+      paths:
+      - path: /apple # /apple 경로로 들어오는 요청
+        pathType: Prefix
+        backend:
+          service:
+            name: apple-service # apple-service로 전달
+            port:
+              number: 8000
+      - path: /banana # /banana 경로로 들어오는 요청
+        pathType: Prefix
+        backend:
+          service:
+            name: banana-service # banana-service로 전달
+            port:
+              number: 8000

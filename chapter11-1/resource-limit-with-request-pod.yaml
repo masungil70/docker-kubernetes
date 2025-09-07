@@ -1,0 +1,24 @@
+# 이 YAML 파일은 Pod를 정의합니다.
+# 이 Pod는 requests와 limits를 모두 설정했지만, 그 값이 서로 다릅니다.
+# 이렇게 설정된 Pod는 쿠버네티스에서 'Burstable' QoS 클래스로 분류됩니다.
+# Burstable Pod는 중간 수준의 우선순위를 가집니다.
+# 평소에는 requests만큼의 자원을 보장받다가, 노드에 여유 자원이 있으면 limits까지 자원을 더 사용할 수 있습니다.
+# 일반적인 웹 서버나 API 서버 등 대부분의 워크로드에 적합한 모델입니다.
+apiVersion: v1
+kind: Pod
+metadata:
+  name: resource-limit-with-request-pod
+  labels:
+    name: resource-limit-with-request-pod
+spec:
+  containers:
+  - name: nginx
+    image: nginx:latest
+    resources:
+      # Burstable QoS: requests < limits
+      limits:
+        memory: "256Mi"
+        cpu: "1000m"
+      requests:
+        memory: "128Mi"
+        cpu: "500m"

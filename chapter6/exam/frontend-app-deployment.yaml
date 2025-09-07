@@ -1,0 +1,27 @@
+# frontend-app-deployment.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: frontend-app
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: frontend-app
+  template:
+    metadata:
+      labels:
+        app: frontend-app
+    spec:
+      containers:
+      - name: client-app
+        image: curlimages/curl # curl 도구가 포함된 이미지
+        # 5초마다 backend-api 서비스를 호출하고 결과를 출력
+        command: ["/bin/sh", "-c"]
+        args:
+          - while true; do
+              echo "--- Calling Backend API ---";
+              curl http://backend-api;
+              echo; echo "---------------------------";
+              sleep 5;
+            done

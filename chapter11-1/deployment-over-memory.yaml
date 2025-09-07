@@ -1,0 +1,30 @@
+# 이 YAML 파일은 Deployment를 정의합니다.
+# 이 Deployment는 의도적으로 많은 양의 메모리를 요청하도록 설정되어 있습니다.
+# 이는 ResourceQuota나 LimitRange에 의해 설정된 메모리 한도를 초과하는 상황을 테스트하기 위함입니다.
+# 만약 네임스페이스의 할당량이 3000Mi보다 작다면, 이 Deployment를 통해 생성되는 Pod는 스케줄링에 실패할 것입니다.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: deployment-over-memory
+spec:
+  selector:
+    matchLabels:
+      app: nginx
+  template:
+    metadata:
+      name: nginx
+      labels:
+        app: nginx
+    spec:
+      containers:
+      - name: nginx
+        image: nginx
+        resources:
+          # 컨테이너가 최대로 사용할 수 있는 리소스 한도입니다.
+          limits:
+            memory: "3000Mi"  # 메모리 한도를 3000 Mebibytes로 높게 설정
+            cpu: "1000m"     # CPU 한도를 1 코어로 설정
+          # 컨테이너가 보장받는 최소 리소스 양입니다.
+          requests:
+            memory: "128Mi"
+            cpu: "500m"      # CPU 0.5 코어 요청

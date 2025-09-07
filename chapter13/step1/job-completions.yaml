@@ -1,0 +1,16 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: job-completions
+spec:
+  # 이 Job이 성공으로 간주되기 위해 완료되어야 하는 파드의 총 개수를 지정합니다.
+  # 이 예제에서는 3개의 파드가 성공적으로 실행을 마쳐야 Job이 완료됩니다.
+  # parallelism이 지정되지 않았으므로, 파드는 기본적으로 하나씩 순차적으로 실행됩니다.
+  completions: 3
+  template:
+    spec:
+      restartPolicy: Never
+      containers:
+      - image: busybox
+        args: ["sh", "-c", "echo Hello, World && exit 0"]
+        name: job-completions

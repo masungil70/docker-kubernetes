@@ -1,0 +1,22 @@
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: calculator-alert-rules
+  namespace: monitoring # monitoring 네임스페이스에 생성
+  labels:
+    # 이 레이블이 있어야 kube-prometheus-stack이 규칙을 자동으로 로드합니다.
+    release: prometheus 
+spec:
+  groups:
+  - name: calculator-app-alerts
+    rules:
+    - alert: HighCpuUsage
+      expr: >
+        (sum(rate(container_cpu_usage_seconds_total{pod=~"calculator-deployment-.*"}[5m])) by (pod) / 
+        sum(kube_pod_container_resource_limits{resource="cpu", pod=~"calculator-deployment-.*"} > 0) by (pod)) * 100 > 70
+      for: 1m
+      labels:
+        severity: warning
+      annotations:
+        summary: "High CPU Usage on {{ $labels.pod }}"
+        description: "{{ $labels.pod }} has been using over 70% of its allocated CPU for the last minute."

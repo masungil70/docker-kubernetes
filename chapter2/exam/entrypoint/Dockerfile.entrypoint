@@ -1,0 +1,8 @@
+# Dockerfile.entrypoint: ENTRYPOINT만 사용하는 경우
+FROM alpine
+WORKDIR /app
+COPY app.sh .
+RUN chmod +x app.sh
+
+# 컨테이너의 주 실행 명령어로 app.sh를 지정
+ENTRYPOINT ["./app.sh", "fixed-entrypoint-arg"]

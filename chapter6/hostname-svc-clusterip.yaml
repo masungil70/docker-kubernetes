@@ -1,0 +1,43 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: hostname-svc-clusterip
+spec:
+  ports:
+    - name: web-port
+      port: 8080
+      targetPort: 8000  #nginx-pod.yaml에서 정의한 nginx 컨테이너의 포트를 의미한것 이며,
+                      #nginx 컨테이너가 80번 포트로 요청을 수신합니다.
+  selector:
+    app: webserver    #nginx-pod.yaml에서 정의한 nginx 컨테이너의 레이블을 의미합니다.  
+                      #이 레이블을 가진 Pod로 요청을 전달합니다.
+                      #nginx 컨테이너가 80번 포트로 요청을 수신합니다.
+  
+  type: ClusterIP     #서비스가 클러스터 내부에서만 접근 가능하도록 설정합니다.
+
+#중요함
+#ClusterIP는 클러스터 내부에서만 접근 가능한 IP 주소를 제공합니다.
+
+#반드시 사전에 kubectl apply -f deployment-hostname.yaml 명령어으로 디프로이먼트를 실행해야 아래 서비스가 정상적으로 동작합니다.  
+#kubectl apply -f hostname-svc-clusterip.yaml 명령어로 적용해야 합니다.
+#kubectl get  deployments.apps -o wide 로 실행 중인 deployments를 확인할 수 있습니다.
+#kubectl get pod -o wide 로 실행 중인 pod를 확인할 수 있습니다.
+#curl <pod-ip> 파드에서 실행중인 파드를 실행 할 수 있습니다
+#kubectl get svc -o wide 로 실행 중인 service를 확인할 수 있습니다.
+#curl <ClusterIP>:8080 클러스터 ip:8080 포트로 입력을 받아 내부에서 실행중인 backend:80 포트로 포워딩하여  실행 할 수 있습니다.
+#curl <ClusterIP>:8080 을 여러번 실행하여 부하 분산을 확인할 수 있습니다.
+#node 각각에서 curl <ClusterIP>:8080 을 실행하여 부하 분산을 확인할 수 있습니다.
+#master node 에서 curl <ClusterIP>:8080 을 실행하여 부하 분산을 확인할 수 있습니다.
+#pod  curl <ClusterIP>:8080 을 실행하여 부하 분산을 확인할 수 있습니다.
+#master node 에서 curl <ClusterIP>:8080 을 실행하여 부하 분산을 확인할 수 있습니다.
+
+#endpoint : 서비스가 가리키는 도착점 또는 Pod의 IP와 Port입니다.
+#endpoint 확인 방법은 kubectl get endpoints  
+#kubectl get endpoints 
+
+#서비스 삭제 방법은 kubectl delete svc <service-name> 명령어로 서비스를 삭제할 수 있습니다.
+#kubectl delete svc hostname-svc-clusterip
+#kubectl delete service hostname-svc-clusterip
+# 또는 kubectl delete -f hostname-svc-clusterip.yaml 명령어로 서비스를 삭제할 수 있습니다.
+#kubectl delete -f hostname-svc-clusterip.yaml
+

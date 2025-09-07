@@ -1,0 +1,11 @@
+# Dockerfile.combined: ENTRYPOINT와 CMD를 함께 사용하는 경우
+FROM alpine
+WORKDIR /app
+COPY app.sh .
+RUN chmod +x app.sh
+
+# 주 실행 명령어는 app.sh
+ENTRYPOINT ["./app.sh"]
+
+# ENTRYPOINT에 전달될 기본 파라미터는 "default-param-from-cmd"
+CMD ["default-param-from-cmd"]

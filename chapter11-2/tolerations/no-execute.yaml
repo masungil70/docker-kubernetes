@@ -1,0 +1,14 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: my-gpu-app
+spec:
+  containers:
+  - name: gpu-worker
+    image: nvidia/cuda:11.0-base
+  tolerations:
+  - key: "gpu"
+    operator: "Equal"
+    value: "nvidia"
+    effect: "NoExecute"
+    tolerationSeconds: 300 # 노드에 문제가 생겨 NoExecute 테인트가 추가되면, 300초 동안 축출을 유예합니다.

@@ -1,0 +1,20 @@
+# 이 YAML 파일은 Pod를 정의합니다.
+# 이 Pod는 의도적으로 매우 높은 메모리 한도(limit)를 설정했습니다.
+# 이는 네임스페이스에 적용된 ResourceQuota의 메모리 한도를 초과하는 상황을 테스트하기 위함입니다.
+# 예를 들어, 네임스페이스의 총 메모리 한도 할당량이 3000Mi보다 작다면, 이 Pod는 생성되지 않습니다.
+apiVersion: v1
+kind: Pod
+metadata:
+  name: memory-over-pod
+spec:
+  containers:
+  - name: nginx
+    image: nginx
+    resources:
+      requests:
+        cpu: "200m"
+        memory: "300Mi"
+      limits:
+        cpu: "200m"
+        # ResourceQuota의 limits.memory 할당량을 초과할 목적으로 높게 설정된 값
+        memory: "3000Mi"

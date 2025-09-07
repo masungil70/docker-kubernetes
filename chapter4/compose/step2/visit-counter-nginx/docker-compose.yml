@@ -1,0 +1,18 @@
+services:
+  nginx:
+    image: nginx:latest
+    ports:
+      - "8000:80"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf
+    depends_on:
+      - web
+
+  web:
+    build: .
+    # Nginx를 통해 접근하므로 web 서비스의 포트는 더 이상 외부에 직접 노출하지 않습니다.
+    depends_on:
+      - redis
+
+  redis:
+    image: "redis:alpine"

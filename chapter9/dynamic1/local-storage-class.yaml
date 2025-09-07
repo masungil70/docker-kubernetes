@@ -1,0 +1,7 @@
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: local-storage-class
+provisioner: rancher.io/local-path # local-path-provisioner의 프로비저너 이름
+reclaimPolicy: Delete # PVC 삭제 시 PV와 실제 스토리지도 함께 삭제
+volumeBindingMode: WaitForFirstConsumer # 파드가 스케줄링될 때까지 PV 바인딩을 지연

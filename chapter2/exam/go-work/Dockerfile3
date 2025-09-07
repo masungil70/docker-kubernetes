@@ -1,0 +1,14 @@
+#이미지명에 대한 builder 이름 선언
+FROM golang AS builder 
+ADD main.go /root
+WORKDIR /root
+RUN go build -o mainApp main.go
+
+#1번 이미지 
+FROM alpine:latest
+WORKDIR /root
+#builder 이미지에 결과물로 존재하는 /root/mainApp 파일을 1번 이미지에 복사한다
+COPY --from=builder /root/mainApp .
+#mainApp을 실행한다 
+CMD ["./mainApp"]
+

@@ -1,0 +1,87 @@
+replicas와 --scale의 차이점
+
+  replicas와 --scale은 모두 서비스의 컨테이너 수를 조절하는 기능이지만, 접근 방식과 사용 목적에서 명확한 차이가 있습니다.
+
+  `replicas` 속성:
+
+  replicas는 선언형(Declarative) 방식입니다. 이는 docker-compose.yml 파일 안에 "이 서비스는 N개의 복제본을
+  가져야 한다"고 명시적으로 선언하고 정의하는 것을 의미합니다.
+
+   * 지속성: docker-compose.yml 파일 자체에 설정이 저장되므로, 이 값을 바꾸지 않는 한 docker-compose up
+     명령을 실행할 때마다 항상 지정된 수의 컨테이너가 실행됩니다. 즉, 서비스의 기본 상태가 영구적으로
+     정의됩니다.
+   * 목적: 프로젝트의 기본 아키텍처를 코드로 관리(Infrastructure as Code)하기 위한 것입니다. "우리 서비스의
+     web은 기본적으로 3중화 구성이다"와 같이 서비스의 의도된 구조를 설정 파일에 명시하는 데 사용됩니다.
+
+  `--scale` 옵션:
+
+  --scale은 명령형(Imperative) 방식입니다. 이는 터미널에서 Docker에게 "지금 당장 이 서비스를 N개로
+  실행해"라고 직접 명령하는 것을 의미합니다.
+
+   * 지속성: 이 설정은 일회성이며, 해당 명령이 실행되는 동안에만 유효합니다. docker-compose.yml 파일 자체를
+     변경하는 것이 아니므로, 나중에 --scale 옵션 없이 다시 docker-compose up을 실행하면 원래 설정(예:
+     replicas에 명시된 수 또는 기본값인 1개)으로 돌아갑니다.
+   * 목적: 임시적인 부하 테스트를 하거나, 갑작스러운 트래픽 증가에 대응하기 위해 "지금 즉시" 서비스의 용량을
+     조절해야 할 때 유용합니다.
+
+  요약:
+
+   * replicas는 설계도(`docker-compose.yml`)에 "원래 몇 개짜리 구성인지"를 그려 넣는 것과 같습니다.
+   * --scale은 현장에서 "지금만 임시로 몇 개를 더 투입해달라"고 요청하는 것과 같습니다.
+
+
+  우선순위: --scale > replicas
+
+  Docker Compose는 설정을 적용할 때 다음과 같은 우선순위를 따릅니다.
+
+   1. 가장 높은 우선순위: 커맨드 라인 옵션 (`--scale`)
+   2. 기본값: `docker-compose.yml` 파일 설정 (`replicas`)
+
+  즉, docker-compose.yml 파일에 replicas: 3 이라고 명시되어 있더라도, 터미널에서 --scale web=5 라고 명령을
+  내리면 Docker Compose는 "파일에 3개라고 쓰여있지만, 이번에는 사용자가 직접 5개로 실행하라고 명령했으니
+  5개로 실행해야겠다" 라고 판단합니다.
+
+  커맨드 라인 옵션은 파일 설정에 대한 일시적인 덮어쓰기(Temporary Override)로 동작합니다.
+
+  예제
+  
+  1단계: visit-counter-replicas 폴더를 visit-counter-replicas-scale 폴더로 복사하고 복사된 폴더로 이동합니다
+    cp -r ~/visit-counter-replicas ~/visit-counter-replicas-scale
+    cd visit-counter-replicas-scale
+    
+  2단계: docker-compose.yml 파일에서 `replicas` 설정 값이 3인지 확인 하고 3이 아니면 수정합니다 
+    vi docker-compose.yml
+    ...
+      replica: 3 <- 이 부부을 수정합니다 
+    ...
+
+  3단계: 먼저 파일에 정의된 대로 서비스를 시작합니다.
+
+    docker-compose up -d
+   
+   * 결과: docker-compose ps로 확인하면 web 컨테이너가 3개 실행됩니다. (replicas: 3 설정 적용)
+
+
+  4단계: `--scale` 명령어로 동적 변경 (확장)
+
+  이제 실행 중인 상태에서, --scale 옵션으로 컨테이너 수를 5개로 늘려보겠습니다.
+
+   docker-compose up -d --scale web=5
+
+   * 결과: docker-compose ps로 확인하면 web 컨테이너가 5개로 늘어납니다. replicas: 3 설정이 무시되고 --scale
+     web=5 명령이 우선 적용되었습니다.
+
+  5단계: `--scale` 옵션 없이 다시 실행 (원상 복귀)
+
+   1 docker-compose up -d
+   * 결과: docker-compose ps로 확인하면 web 컨테이너가 다시 3개로 줄어듭니다. 커맨드 라인에서 덮어쓰기
+     명령이 없었기 때문에, Docker Compose는 다시 docker-compose.yml 파일에 정의된 기본값(replicas: 3)으로
+     상태를 되돌립니다.
+
+  replicas와 --scale은 서로 충돌하는 기능이 아니라, 상호 보완적으로 사용할 수 있도록 설계되었습니다.
+
+   * `replicas`: 서비스의 '평상시 기본 상태' 또는 '설계상 의도된 상태'를 정의합니다.
+   * `--scale`: '일시적인 필요'에 의해 기본 상태를 일시시적으로 변경할 때 사용하는 강력한 수단입니다.
+
+  따라서 평소에는 replicas로 안정적인 기본 구성을 유지하다가, 부하 테스트나 갑작스러운 트래픽 대응이
+  필요할 때 --scale을 유연하게 활용하는 것이 가장 좋은 사용 방식입니다.

@@ -1,0 +1,21 @@
+# backend-api-deployment-v2.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: backend-api-v2 # v2 배포
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: backend-api
+  template:
+    metadata:
+      labels:
+        app: backend-api # ★★★ v1과 동일한 라벨을 사용 ★★★
+        version: v2
+    spec:
+      containers:
+      - name: api-server
+        image: masungil/echo-hostname:2.0 # 요청에 텍스트를 응답하는 간단한 이미지
+        ports:
+        - containerPort: 80

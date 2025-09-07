@@ -1,0 +1,15 @@
+# 이 YAML 파일은 오류를 발생시키는 파드를 정의합니다.
+apiVersion: v1
+kind: Pod
+metadata:
+  name: error-pod-restart-never
+spec:
+  # restartPolicy를 "Never"로 설정하여, 컨테이너가 오류로 종료되어도 재시작하지 않습니다.
+  # 파드는 "Error" 상태가 됩니다.
+  restartPolicy: Never
+  containers:
+  - name: error-pod-restart-never
+    image: busybox
+    # "sh -c 'sleep 10 && exit 1'" 명령어는 10초 동안 대기한 후 오류(종료 코드 1)를 발생시키며 종료됩니다.
+    command: ["sh"]
+    args: ["-c", "sleep 10 && exit 1"]

@@ -1,0 +1,27 @@
+# CronJob API의 안정화 버전(v1)을 사용합니다.
+# 현재 쿠버네티스 환경에서는 이 버전을 사용하는 것이 표준이며 권장됩니다.
+apiVersion: batch/v1
+# 리소스의 종류: CronJob
+kind: CronJob
+metadata:
+  # CronJob의 고유한 이름
+  name: cronjob-example-k8s-latest
+spec:
+  # Cron 표현식으로 작업을 실행할 스케줄을 정의합니다.
+  # 형식: "분(0-59) 시(0-23) 일(1-31) 월(1-12) 요일(0-6)"
+  # "*/1 * * * *"는 "매 1분마다"를 의미합니다.
+  schedule: "*/1 * * * *"
+  # 위 스케줄에 따라 생성될 Job의 명세를 정의하는 템플릿입니다.
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          # 파드 재시작 정책. Job에서는 Never 또는 OnFailure만 사용 가능합니다.
+          restartPolicy: Never
+          containers:
+          # 사용할 컨테이너 이미지
+          - image: busybox
+            # 컨테이너가 실행할 명령어. "Hello, World"를 출력하고 성공적으로 종료합니다.
+            args: ["sh", "-c", "echo Hello, World && exit 0"]
+            # 컨테이너의 이름
+            name: cronjob-example-k8s-latest

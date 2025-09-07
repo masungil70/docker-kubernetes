@@ -1,0 +1,21 @@
+version: '3.8'
+
+services:
+  web:
+    image:  httpd
+    # 컨테이너 이름을 명시적으로 설정
+    container_name: web
+    ports:
+      - "80:80"
+    links:
+      - mysql:db
+    depends_on:
+      - mysql
+
+  mysql:
+    image: mysql
+    # 컨테이너 이름을 명시적으로 설정
+    container_name: mysql
+    environment:
+      MYSQL_ROOT_PASSWORD: 1004
+

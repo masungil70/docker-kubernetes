@@ -1,0 +1,7 @@
+# ---  문서 시작 ---
+# null 값
+middle_name: null
+
+# 물결표를 사용한 null 값
+spouse: ~
+# --- 문서의 끝 ---

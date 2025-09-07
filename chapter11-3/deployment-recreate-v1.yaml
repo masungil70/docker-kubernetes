@@ -1,0 +1,27 @@
+# 이 YAML 파일은 쿠버네티스 디플로이먼트(Deployment)를 정의합니다.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: deployment-recreate
+spec:
+  replicas: 3
+  # strategy는 디플로이먼트의 업데이트 전략을 설정합니다.
+  # "Recreate" 전략은 이전 버전의 파드를 모두 삭제한 후, 새 버전의 파드를 생성합니다.
+  # 이 방식은 다운타임이 발생할 수 있습니다.
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: nginx
+  template:
+    metadata:
+      name: nginx
+      labels:
+        app: nginx
+    spec:
+      containers:
+      - name: nginx
+        # nginx 1.15 버전 이미지를 사용합니다.
+        image: nginx:1.15
+        ports:
+        - containerPort: 80

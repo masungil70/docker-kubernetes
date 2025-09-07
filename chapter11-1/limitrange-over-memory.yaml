@@ -1,0 +1,21 @@
+# 이 YAML 파일은 Pod를 정의합니다.
+# 이 Pod는 LimitRange의 메모리 제한을 초과하는 상황을 테스트하기 위해 만들어졌습니다.
+# 예를 들어, 'limitrange-example.yaml'이 적용된 네임스페이스에서 이 Pod를 생성하면,
+# 컨테이너의 memory limit(500Mi)이 LimitRange의 max.memory(256Mi, default limit이 max 역할을 할 수 있음)를
+# 초과하여 Pod 생성이 실패할 수 있습니다. (LimitRange 설정에 따라 동작이 달라짐)
+apiVersion: v1
+kind: Pod
+metadata:
+  name: limitrange-over-memory-pod
+spec:
+  containers:
+  - name: nginx
+    image: nginx
+    resources:
+      requests:
+        cpu: "10m"
+        memory: "16Mi"
+      limits:
+        cpu: "100m"
+        # LimitRange의 max 값을 초과하도록 의도적으로 높게 설정된 메모리 한도
+        memory: "500Mi"

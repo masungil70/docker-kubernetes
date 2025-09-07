@@ -1,0 +1,22 @@
+# 이 YAML 파일은 PodDisruptionBudget(PDB)를 정의하는 예제입니다.
+# PDB는 자발적인 중단(예: 노드 업그레이드를 위한 드레이닝) 상황에서
+# 애플리케이션의 가용성을 보장하기 위해 사용됩니다.
+apiVersion: policy/v1beta1
+kind: PodDisruptionBudget
+metadata:
+  name: simple-pdb-example
+spec:
+  # 'maxUnavailable'은 동시에 비정상 상태가 될 수 있는 포드의 최대 개수 또는 비율을 지정합니다.
+  # 여기서는 최대 1개의 포드만 비정상 상태가 되는 것을 허용합니다.
+  # 'minAvailable'과 함께 사용할 수 없으며, 둘 중 하나만 사용해야 합니다.
+  maxUnavailable: 1
+  # 'minAvailable'은 항상 사용 가능해야 하는 포드의 최소 개수 또는 비율을 지정합니다.
+  # 예를 들어 'minAvailable: 2'로 설정하면 항상 최소 2개의 포드가 실행 중이어야 합니다.
+  # minAvailable: 2
+
+  # 'selector'는 이 PDB가 적용될 포드를 선택합니다.
+  selector:
+    matchLabels:
+      # 'app' 레이블이 'webserver'인 포드를 대상으로 합니다.
+      # (deployment-pdb-test.yaml 파일 참조)
+      app: webserver

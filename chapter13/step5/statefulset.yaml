@@ -1,0 +1,21 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: statefulset
+spec:
+  serviceName: statefulset-svc #  Headless Service 이름
+  replicas: 3
+  selector:
+    matchLabels:
+      app: pod-nginx
+  template:
+    metadata:
+      labels:
+        app: pod-nginx
+    spec:
+      containers:
+      - name: nginx
+        image: nginx
+        ports:
+        - containerPort: 80
+

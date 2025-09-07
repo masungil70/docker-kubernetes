@@ -1,0 +1,161 @@
+3. Nginx를 리버스 프록시(Reverse Proxy)로 연동하는 예제
+
+ 기존 방문 횟수 카운터 예제에 Nginx를 리버스 프록시(Reverse Proxy)로 추가하여 연동하는
+  방식으로 코드를 수정하고, 왜 그렇게 구성하는지 상세히 설명해 드리겠습니다.
+
+  Nginx를 왜 사용할까요?
+
+  실제 서비스 환경에서는 보안, 성능, 안정성 등의 이유로 웹 애플리케이션(FastAPI, uvicorn)을 인터넷에 직접
+  노출하지 않습니다. 대신, Nginx와 같은 웹 서버를 앞단에 배치하여 다음과 같은 역할을 맡깁니다.
+
+   * 리버스 프록시 (Reverse Proxy): 외부의 모든 요청을 Nginx가 먼저 받은 다음, 내부의 안전한 네트워크에 있는
+     웹 애플리케이션 서버로 요청을 전달해 줍니다. 이렇게 하면 웹 애플리케이션의 IP 주소나 포트가 외부에 직접
+     노출되지 않아 보안에 유리합니다.
+   * 로드 밸런싱 (Load Balancing): 만약 웹 애플리케이션 서버를 여러 개 실행한다면, Nginx가 들어오는 요청을
+     여러 서버에 골고루 분산시켜 부하를 줄여줍니다. (이 예제에서는 1개만 사용합니다.)
+   * 정적 파일 처리 (Static File Serving): 이미지, CSS, JavaScript 파일과 같은 정적 파일은 Nginx가 직접
+     처리하게 하여 웹 애플리케이션의 부담을 줄여 성능을 높일 수 있습니다.
+   * SSL/TLS 암호화 처리: HTTPS 통신을 위한 SSL/TLS 인증서 관련 작업을 Nginx에서 처리하게 하여 웹
+     애플리케이션이 비즈니스 로직에만 집중하도록 할 수 있습니다.
+
+  1. Nginx 설정 파일 생성
+
+  먼저 Nginx가 어떻게 동작할지 정의하는 설정 파일을 만듭니다. visit-counter 디렉토리를 visit-counter-nginx로 복사하고
+  visit-counter-nginx 디렉토리 안에 nginx라는 새 디렉토리를 만들고, 그 안에 nginx.conf 파일을 생성하겠습니다.
+
+  cp -r ~/visit-counter ~/visit-counter-nginx && cd ~/visit-counter-nginx
+  mkdir nginx
+
+  vi nginx.conf
+events {}
+
+http {
+    server {
+        listen 80;
+
+        location / {
+            proxy_pass http://web:80;
+            proxy_set_header Host $host;
+            proxy_set_header X-Real-IP $remote_addr;
+            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+            proxy_set_header X-Forwarded-Proto $scheme;
+        }
+    }
+}
+
+✦ nginx.conf 파일을 생성했으니, 이제 해당 설정 파일의 내용을 설명하고 docker-compose.yml 파일을 수정하여
+  Nginx 서비스를 추가하겠습니다.
+
+  nginx.conf 파일 설명
+
+   * events {}: Nginx의 기본적인 작동 방식을 정의하는 부분이지만, 이 예제에서는 특별한 설정이 필요 없어 비워둡니다.
+   * http {}: HTTP 서버 관련 설정을 포함합니다.
+   * server {}: 하나의 웹사이트(가상 호스트)에 대한 설정을 정의합니다.
+   * listen 80;: Nginx 컨테이너가 80번 포트에서 들어오는 요청을 받도록 설정합니다.
+   * location / {}: 루트 경로(/)로 들어오는 모든 요청을 처리하는 방법을 정의합니다.
+   * proxy_pass http://web:80;: 가장 중요한 부분입니다. Nginx가 받은 모든 요청을 http://web:80 주소로 그대로
+     전달(proxy)합니다. 여기서 web은 docker-compose.yml에 정의할 FastAPI 웹 애플리케이션 서비스의 이름입니다.
+      Docker의 내부 네트워크 덕분에 서비스 이름으로 다른 컨테이너에 접근할 수 있습니다.
+   * proxy_set_header ...: 프록시로 요청을 전달할 때, 원래 요청에 대한 정보를 HTTP 헤더에 추가하여 백엔드
+     서버(FastAPI)가 클라이언트의 실제 IP 주소 등을 알 수 있게 해줍니다.
+
+  2. docker-compose.yml 수정
+
+  이제 nginx 서비스를 추가하고 기존 web 서비스를 수정하기 위해 docker-compose.yml 파일을
+  업데이트하겠습니다.
+
+  주요 변경 사항:
+
+   1. `nginx` 서비스 추가: Nginx 공식 이미지를 사용하고, 우리가 만든 nginx.conf 파일을 컨테이너 내부의 설정
+      파일 위치로 연결(mount)합니다.
+   2. 포트 설정 변경: 이제 외부 접속은 Nginx가 담당하므로, 호스트의 8000번 포트를 nginx 컨테이너의 80번
+      포트로 연결합니다.
+   3. `web` 서비스 포트 제거: web 서비스는 더 이상 외부에서 직접 접속할 필요가 없으므로 ports 설정을
+      제거합니다. Nginx 컨테이너와 web 컨테이너는 같은 Docker 네트워크 안에 있으므로 포트 노출 없이도 통신할
+      수 있습니다.
+   4. 의존성 설정: nginx는 web으로 요청을 전달해야 하므로, web이 실행된 후에 nginx가 실행되도록 depends_on을
+      설정합니다.
+
+  vi docker-compose.yml 
+services:
+  nginx:
+    image: nginx:latest
+    ports:
+      - "8000:80"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf
+    depends_on:
+      - web
+
+  web:
+    build: .
+    # Nginx를 통해 접근하므로 web 서비스의 포트는 더 이상 외부에 직접 노출하지 않습니다.
+    depends_on:
+      - redis
+
+  redis:
+
+✦ docker-compose.yml 파일 수정이 완료되었습니다.
+
+  이제 Nginx가 추가된 새로운 애플리케이션의 구조와 실행 방법을 최종적으로 정리해 드리겠습니다.
+
+  3. 최종 아키텍처 및 실행 방법
+
+  새로운 애플리케이션 구조
+
+  사용자의 요청은 이제 다음과 같은 흐름으로 처리됩니다.
+
+  [사용자 웹 브라우저] <--> [내 컴퓨터의 8000번 포트]
+         |
+         | (요청)
+         v
+  [Nginx 컨테이너 (포트 80)]
+         |
+         | (요청 전달 - Reverse Proxy)
+         v
+  [Web(FastAPI) 컨테이너 (포트 80)]
+         |
+         | (데이터 조회/수정)
+         v
+  [Redis 컨테이너]
+
+   1. 사용자가 웹 브라우저에서 localhost:8000으로 접속합니다.
+   2. 요청은 Nginx 컨테이너가 가장 먼저 받습니다.
+   3. Nginx는 nginx.conf 설정에 따라 요청을 web 컨테이너(FastAPI 애플리케이션)로 그대로 전달합니다.
+   4. web 컨테이너는 Redis 컨테이너에 접속하여 카운터를 1 증가시키고, 결과를 다시 Nginx를 거쳐 사용자에게
+      보여줍니다.
+
+  최종 파일 구조
+
+  visit-counter-nginx/
+  ├── app.py
+  ├── docker-compose.yml  <-- 수정됨
+  ├── Dockerfile
+  ├── requirements.txt
+  └── nginx/                <-- 추가됨
+      └── nginx.conf        <-- 추가됨
+
+  실행 방법
+
+  실행 및 종료 방법은 이전과 동일합니다. docker-compose가 변경된 설정을 자동으로 감지하여 적용해 줍니다.
+
+   1. 애플리케이션을 빌드하고 실행합니다.
+
+     docker compose up -d --build
+       * --build 옵션을 추가하면 docker-compose.yml 파일의 변경사항을 적용하여 이미지를 새로 빌드합니다.
+       * 이 명령어를 실행하면 redis, web, nginx 세 개의 컨테이너가 순서대로 실행됩니다.
+   
+   2. 실행 확인합니다.
+       * 웹 브라우저 주소창에 http://hostip:8000을 입력하고 접속합니다.
+       * 이전과 동일하게 방문 횟수 카운터가 정상적으로 작동하는 것을 볼 수 있습니다. 겉으로 보기에는
+         똑같지만, 내부적으로는 Nginx를 통해 서비스되고 있는 것입니다.
+       * curl http://localhost:8000
+       
+
+  종료 방법
+
+  애플리케이션을 중지하고 모든 컨테이너를 삭제하려면 다음 명령어를 실행합니다.
+
+    docker-compose down
+
+

@@ -1,0 +1,28 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: fastapi-app
+  labels:
+    app: fastapi-app
+spec:
+  replicas: 3 # You can scale this up for more instances
+  selector:
+    matchLabels:
+      app: fastapi-app
+  template:
+    metadata:
+      labels:
+        app: fastapi-app
+    spec:
+      containers:
+        - name: fastapi-app
+          image:  masungil/fastapi-item-api:latest # This image needs to be built and pushed to your cluster's registry
+          ports:
+            - containerPort: 80
+          env:
+            - name: DB_USER
+              value: kosa
+            - name: DB_PASSWORD
+              value: "1004" # This should ideally come from a secret
+            - name: DB_NAME
+              value: kosa_db

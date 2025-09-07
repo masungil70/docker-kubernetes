@@ -1,0 +1,22 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: pod-busybox
+spec:
+  containers:
+    - name: my-container
+      image: busybox
+      command: 
+        - /bin/sh
+        - -c
+        - |
+          echo "--- sleep 1시간 기다림 ---"
+          sleep 3600
+
+#
+#컨테이너에 연결하여  headless-service의 dns 이름을 조회할 수 있다 
+#kubectl exec -it pod-busybox -- nslookup statefulset-svc
+#Pod의 DNS 주소 : statefulset-0.statefulset-svc.default.svc.cluster.local
+
+
+

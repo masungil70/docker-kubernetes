@@ -1,0 +1,22 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: my-pod-2
+spec:
+  containers:
+    - name: my-container
+      image: busybox
+      command: 
+        - /bin/sh
+        - -c
+        - |
+          env # 컨테이너의 모든 환경 변수 출력
+          echo "--- sleep 1시간 기다림 ---"
+          sleep 3600
+      envFrom:
+        - configMapRef:
+            name: my-nginx-config  # 이 ConfigMap의 모든 키가 환경 변수 이름이 됨
+        - configMapRef:
+            name: log-level-configmap  # 이 ConfigMap의 모든 키가 환경 변수 이름이 됨
+        - configMapRef:
+            name: start-k8s  # 이 ConfigMap의 모든 키가 환경 변수 이름이 됨

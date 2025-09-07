@@ -1,0 +1,79 @@
+Docker Swarm에서 노드의 역할을 변경하는 것은 간단한 명령어로 가능합니다.
+
+  핵심 명령어:
+
+   * docker node promote: Worker 노드를 Manager로 승격시킵니다.
+   * docker node demote: Manager 노드를 Worker로 강등시킵니다.
+
+  중요: 이 모든 명령어는 Manager 노드에서만 실행할 수 있습니다.
+
+  1. Worker 노드를 Manager로 변경하기 (승격)
+
+  Worker 노드를 Manager로 승격시켜 클러스터 관리의 고가용성(High Availability)을 높일 수
+   있습니다. 일반적으로 3대 이상의 Manager를 두는 것을 권장합니다.
+
+  시나리오: 현재 유일한 manager이고, Worker인 node2를 추가 Manager로 만들고 싶습니다.
+
+  절차:
+
+   1. Manager에서 먼저 현재 노드 상태를 확인합니다.
+    docker node ls
+    결과 
+    ID                            HOSTNAME   STATUS    AVAILABILITY   MANAGER STATUS   ENGINE VERSION
+    qisbqmbzb44gbh076cejhiddj *   manager    Ready     Active         Leader           28.3.3
+    kqhkoni5je707flvar92wt76j     node1      Ready     Active                          28.3.3
+    o24mpmioqgc4mug9risaypafe     node2      Ready     Active                          28.3.3
+
+    node2의 MANAGER STATUS가 비어있는 것을 확인합니다.
+
+   2. manager에서 실행 node2 노드를 promote 명령어로 승격시킵니다. 노드의 ID 또는
+      HOSTNAME을 사용할 수 있습니다.
+      docker node promote node2
+
+   3. manager에서 실행 다시 노드 상태를 확인합니다.
+    docker node ls
+
+    ID                            HOSTNAME   STATUS    AVAILABILITY   MANAGER STATUS   ENGINE VERSION
+    qisbqmbzb44gbh076cejhiddj *   manager    Ready     Active         Leader           28.3.3
+    kqhkoni5je707flvar92wt76j     node1      Ready     Active                          28.3.3
+    o24mpmioqgc4mug9risaypafe     node2      Ready     Active         Reachable        28.3.3
+    
+    이제 node2의 MANAGER STATUS가 Reachable로 변경되었습니다. 이는 node2가 Manager 역할을
+  수행하고 있으며, 현재 Leader인 manager와 통신 가능하다는 의미입니다. 만약 manager 노드에 문제가
+  생기면 node2가 새로운 Leader가 될 수 있습니다.
+
+  2. Manager 노드를 Worker로 변경하기 (강등)
+
+  manager 노드를 더 이상 관리 역할로 사용하지 않거나, 유지보수 등의 이유로 잠시 역할에서
+   제외하고 싶을 때 Worker로 강등할 수 있습니다.
+
+  시나리오: 현재 manager와 node2가 Manager이고, node2를 다시 Worker 노드로 변경하고 싶습니다.
+
+  절차:
+
+   1. manager에서 실행  현재 노드 상태를 확인합니다.
+      docker node ls
+      ID                            HOSTNAME   STATUS    AVAILABILITY   MANAGER STATUS   ENGINE VERSION
+      qisbqmbzb44gbh076cejhiddj *   manager    Ready     Active         Leader           28.3.3
+      kqhkoni5je707flvar92wt76j     node1      Ready     Active                          28.3.3
+      o24mpmioqgc4mug9risaypafe     node2      Ready     Active         Reachable        28.3.3
+
+   2. manager에서 실행 node2 노드를 demote 명령어로 강등시킵니다.
+      docker node demote node2
+      결과:
+      Manager node2 demoted in the swarm.
+
+   3. manager에서 실행 다시 노드 상태를 확인합니다.
+      docker node ls
+      ID                            HOSTNAME   STATUS    AVAILABILITY   MANAGER STATUS   ENGINE VERSION
+      qisbqmbzb44gbh076cejhiddj *   manager    Ready     Active         Leader           28.3.3
+      kqhkoni5je707flvar92wt76j     node1      Ready     Active                          28.3.3
+      o24mpmioqgc4mug9risaypafe     node2      Ready     Active                          28.3.3
+
+      node2의 MANAGER STATUS가 다시 비워지면서 Worker 노드로 역할이 변경된 것을 확인할 수 있습니다.
+
+  ⚠️ 매우 중요한 주의사항
+   * 마지막 Manager는 강등할 수 없습니다. Swarm 클러스터는 최소 1대의 Manager가 반드시
+     필요합니다. 만약 Manager가 1대만 남은 상태에서 demote를 시도하면 에러가 발생하며 거부됩니다.
+   * Leader Manager를 강등하면? 여러 Manager가 있을 때 현재 Leader를 강등시키면, 나머지
+     Manager 중에서 새로운 Leader가 자동으로 선출되므로 클러스터는 문제없이 운영됩니다.

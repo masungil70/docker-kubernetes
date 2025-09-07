@@ -1,0 +1,83 @@
+멀티스테이지 
+멀티스테이지 사용전의 이미지 용량 확인을 위한 작업을 진행한다  
+go를 이용하여 간단한 Hello World 메시지를 출력하는 이미지 생성 본다
+   
+1. 작업 폴더를 생성하고 생성한 폴더로 이동한다 
+mkdir ~/go-work && cd ~/go-work
+
+2. main.go 파일을 생성한다 
+vi main.go
+package main 
+import "fmt"
+func main() {
+  fmt.Println("Hello World")
+}
+
+3. Dockerile을 작성한다 
+vi Dockerfile
+#golang을 기본 이미지로 한다 
+FROM golang
+#main.go 파일을 root 폴더로 복사한다
+ADD main.go /root
+#작업폴더를 변경한다 
+WORKDIR /root
+#main.go 파일을 빌드하여 /root/mainApp 실행 파일 만든다
+RUN go build -o /root/mainApp /root/main.go
+#mainApp을 실행한다 
+CMD ["./mainApp"]
+
+4. Dockerfile을 빌드하여 이미지를 생성한다 
+docker build -t go_helloworld .
+
+
+5. 생성된 docker 이미지의 크기를 확인한다 (go_helloworld 이미지 크기 888MB)
+
+-----------------------------------------------------------------
+멀티 스테이지 빌드(이미지 색인 사용) 
+
+1. 멀티 스테이지 빌드를 사용하여 Dockerile을 작성한다
+vi Dockerfile2
+#0번 이미지 
+FROM golang
+ADD main.go /root
+WORKDIR /root
+RUN go build -o /root/mainApp /root/main.go
+
+#1번 이미지 
+FROM alpine:latest
+WORKDIR /root
+#0번 이미지에 결과물로 존재하는 /root/mainApp 파일을 1번 이미지에 복사한다
+COPY --from=0 /root/mainApp .
+#mainApp을 실행한다 
+CMD ["./mainApp"]
+
+2. Dockerfile2을 빌드하여 이미지를 생성한다 
+docker build -f Dockerfile2 -t go_helloworld:multi-stage .
+
+3. 생성된 docker 이미지의 크기를 확인한다 (go_helloworld:multi-stage 이미지 크기 10MB)
+
+-------------------------------------------
+
+멀티 스테이지 빌드(빌드 단계별 이름 지정) 
+
+1. 멀티 스테이지 빌드를 사용하여 Dockerile을 작성한다
+vi Dockerfile3
+#첫 번째 빌드 단계(Stage)의 이름을 `builder`로 지정 : AS 이름 
+FROM golang AS builder
+COPY main.go /root
+WORKDIR /root
+RUN go build -o mainApp main.go
+
+#1번 이미지 
+FROM alpine:latest
+WORKDIR /root
+#builder 이미지에 결과물로 존재하는 /root/mainApp 파일을 1번 이미지에 복사한다
+COPY --from=builder /root/mainApp .
+#mainApp을 실행한다 
+CMD ["./mainApp"]
+
+2. Dockerfile3을 빌드하여 이미지를 생성한다 
+docker build -f Dockerfile3 -t go_helloworld:multi-stage2 .
+
+3. 생성된 docker 이미지의 크기를 확인한다 (go_helloworld:multi-stage2 이미지 크기 10MB)
+

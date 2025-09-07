@@ -1,0 +1,28 @@
+# ---  문서 시작 ---
+# &service_template 이라는 앵커로 기본 서비스 설정을 정의
+x-service-template: &service_template
+  restart: always
+  logging:
+    driver: "json-file"
+    options:
+      max-size: "10m"
+      max-file: "3"
+
+services:
+  web-server:
+    # <<: *service_template 으로 기본 설정을 병합(상속)
+    <<: *service_template
+    image: nginx:latest
+    ports:
+      - "80:80"
+
+  database:
+    # 여기서도 기본 설정을 병합
+    <<: *service_template
+    image: postgres:15
+    volumes:
+      - db-data:/var/lib/postgresql/data
+    # 기존 템플릿의 값을 오버라이딩할 수도 있습니다.
+    logging:
+      driver: "local" # 템플릿의 logging.driver 값을 덮어씀
+# --- 문서의 끝 ---

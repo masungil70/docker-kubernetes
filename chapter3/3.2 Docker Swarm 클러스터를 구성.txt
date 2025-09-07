@@ -1,0 +1,256 @@
+ 리눅스 서버 a, b, c 3대에 Docker Swarm 클러스터를 구성하는 전체 절차.
+
+  전체 시나리오:
+
+   * 서버 `a`: Manager 노드 (클러스터 관리 및 명령 실행)
+   * 서버 `b`: node1 노드 (컨테이너 실행)
+   * 서버 `c`: node2 노드 (컨테이너 실행)
+
+ 
+ 
+  사전 준비: 방화벽 설치 및 확인 및 포트 개방 (a, b, c 모든 서버에서)
+
+  Swarm 클러스터의 노드들은 서로 통신해야 합니다. 방화벽이 활성화되어 있다면 다음 포트들을
+  반드시 열어주어야 합니다.
+
+   * TCP 포트 `2377`: 클러스터 관리 통신용 (Manager 노드에 필요)
+   * TCP/UDP 포트 `7946`: 노드 간 통신용
+   * UDP 포트 `4789`: 오버레이 네트워크 트래픽용
+
+  1. UFW 설치하기
+
+  아래 명령어로 간단하게 설치할 수 있습니다.
+
+   sudo apt-get update
+   sudo apt-get install ufw
+
+  2. UFW 상태 확인 (설치 후)
+
+  설치가 완료되면 UFW는 비활성화(inactive) 상태입니다. 아래 명령어로 상태를 확인할 수
+  있습니다.
+   sudo ufw status
+
+  결과:
+   Status: inactive
+
+  3. 필수 연결 허용하기 (SSH)
+
+  가장 중요한 단계입니다. UFW를 활성화하면 기본적으로 모든 들어오는 연결이 차단되므로,
+  원격 접속(SSH)을 허용하지 않으면 서버에 다시 접속할 수 없게 됩니다.
+
+  아래 명령어로 SSH 연결(기본 포트 22번)을 허용합니다.
+
+   sudo ufw allow ssh
+
+  또는 포트 번호를 직접 지정할 수도 있습니다.
+   sudo ufw allow 22/tcp
+
+
+  4. UFW 활성화하기
+
+  이제 준비가 되었으니 UFW를 활성화합니다.
+
+   sudo ufw enable
+
+
+  UFW (Ubuntu Firewall) 포트 개방 사용 예시:
+  # a, b, c 모든 서버에서 실행
+    sudo ufw allow 2377/tcp
+    sudo ufw allow 7946/tcp
+    sudo ufw allow 7946/udp
+    sudo ufw allow 4789/udp
+    sudo ufw reload
+
+  1단계: Docker 설치 (a, b, c 모든 서버에서)
+
+  세 서버 모두에 Docker가 설치되어 있어야 합니다. 각 서버에 접속하여 아래 명령어를 순서대로
+  실행하세요.
+
+   필수 패키지 설치 및 Docker 공식 GPG 키 추가
+    sudo apt-get update
+    sudo apt-get install -y ca-certificates curl -y
+    sudo install -m 0755 -d /etc/apt/keyrings
+    sudo curl -fsSL https://download.docker.com/linux/ubuntu/gpg -o /etc/apt/keyrings/docker.asc
+    sudo chmod a+r /etc/apt/keyrings/docker.asc
+
+   3. Docker 저장소 추가
+
+    echo  "deb [arch=$(dpkg --print-architecture) \
+     signed-by=/etc/apt/keyrings/docker.asc] \
+     https://download.docker.com/linux/ubuntu \
+     $(. /etc/os-release && echo "$VERSION_CODENAME") stable" | \
+     sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
+    sudo apt-get update
+
+   4. Docker 엔진 설치
+
+    sudo apt-get install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
+ 
+   5. 설치 확인 (버전 정보가 나오면 성공)
+    sudo docker --version
+
+   6. (권장) `sudo` 없이 Docker 사용하기
+      매번 sudo를 입력하지 않으려면 현재 사용자를 docker 그룹에 추가하세요.
+        sudo usermod -aG docker $USER
+      이 명령 실행 후에는 반드시 로그아웃했다가 다시 접속해야 적용됩니다.
+
+      아래 명령어는 로그 아웃하지 않고 계속 진행 할 수 있음 
+        newgrp docker 
+
+
+  2단계: Swarm 초기화 (Manager 노드 a에서만 실행)
+
+  이제 서버 a를 Manager 노드로 지정하고 Swarm 클러스터를 생성합니다.
+
+   1. 서버 `a`에 접속하여 아래 명령어를 실행합니다.
+       * --advertise-addr 에는 다른 노드(b, c)가 `a`에 접속할 때 사용할 IP 주소를 입력해야
+         합니다. (보통 내부 IP)
+
+    # <SERVER_A_IP>를 서버 a의 IP 주소로 변경하세요.
+     docker swarm init --advertise-addr <SERVER_A_IP>
+
+   2. 명령어 실행 결과 확인 및 저장
+      명령이 성공하면, Worker 노드를 Swarm에 참여시키기 위한 명령어와 토큰이 출력됩니다. 
+      이 부분을 반드시 복사해두세요. 다음과 같은 형태입니다.
+
+   Swarm initialized: current node (dxn1zf6l61qsb1josjja83ngz) is now a
+     manager.
+    
+    To add a worker to this swarm, run the following command:
+   
+     docker swarm join --token
+     SWMTKN-1-49nj1cmql0jkz5s954yi3oex3nedyz0fb0xx14ie39trti4wxv-8vxv8rssmk7434l2lv
+     ew6dt5a <SERVER_A_IP>:2377
+   
+   
+          To add a manager to this swarm, run 'docker swarm join-token manager' and
+     follow the instructions.
+
+  팁: 만약 위 join 명령어를 잃어버렸다면, 언제든지 Manager 노드(a)에서 아래 명령어로 다시
+  확인할 수 있습니다.
+   docker swarm join-token worker
+
+
+  3단계: Worker 노드 참여 (Worker 노드 b, c에서 실행)
+
+  이제 서버 b와 c를 Swarm 클러스터에 Worker로 참여시킬 차례입니다.
+
+   1. 서버 `b`, '`c'에 접속하여 2단계에서 복사해 둔 docker swarm join ... 명령어를 그대로 붙여넣고
+      실행합니다.
+
+    # 예시
+    docker swarm join --token
+     SWMTKN-1-49nj1cmql0jkz5s954yi3oex3nedyz0fb0xx14ie39trti4wxv-8vxv8rssmk7434l2lv
+     ew6dt5a <SERVER_A_IP>:2377
+      "This node joined a swarm as a worker." 메시지가 나오면 성공입니다.
+
+  4단계: 클러스터 상태 확인 (Manager 노드 a에서 실행)
+
+  모든 노드가 정상적으로 참여했는지 Manager 노드에서 최종 확인합니다.
+
+   1. 서버 `a`에 접속하여 아래 명령어를 실행합니다.
+     docker node ls
+
+   2. 결과 확인
+      아래와 같이 3개의 노드가 모두 Ready 상태로 보이면 성공적으로 클러스터 구성이 완료된
+  것입니다. 서버 a의 MANAGER STATUS가 Leader로 표시됩니다.
+
+  ID                            HOSTNAME   STATUS    AVAILABILITY   MANAGER STATUS   ENGINE VERSION
+  qisbqmbzb44gbh076cejhiddj *   manager    Ready     Active         Leader           28.3.3
+  kqhkoni5je707flvar92wt76j     node1      Ready     Active                          28.3.3
+  v3dpavujwov1nsupo19avs25y     node2      Ready     Active                          28.3.3
+
+ 각 컬럼(Column) 무엇을 의미지
+   * ID: 각 태스크(컨테이너)의 고유한 식별자입니다.
+   * NAME: 태스크의 이름입니다. 보통 서비스명.복제본번호 형식으로 지정됩니다.
+   * IMAGE: 태스크를 실행하는 데 사용된 도커 이미지입니다. 여기서는 nginx:latest
+     입니다.
+   * NODE: 태스크가 할당되어 실행 중인 Swarm 노드의 호스트명입니다.
+   * DESIRED STATE: Swarm 매니저가 이 태스크에 대해 원하는 상태입니다. 서비스가 정상
+     운영 중이라면 Running이 됩니다.
+   * CURRENT STATE: 해당 노드에서 보고된 태스크의 실제 현재 상태입니다.
+   * ERROR: 태스크 실행 중 오류가 발생했다면 그 내용이 표시됩니다.
+   * PORTS: 외부에 노출된 포트 정보입니다.
+
+  5단계: 테스트 서비스 배포 (Manager 노드 a에서 실행)
+
+  클러스터가 잘 작동하는지 간단한 Nginx 웹서버를 배포하여 테스트해 봅시다.
+
+   1. Nginx 서비스 생성
+      3개의 복제본(replica)을 만들어 3개의 노드에 분산 배포하고, 
+      외부에서 8080 포트로 접속할 수 있도록 설정합니다.
+    docker service create --name my-web --replicas 3 -p 8080:80 nginx
+
+   2. 서비스 배포 상태 확인
+    docker service ls
+    docker service ps my-web
+      docker service ps my-web 명령의 결과에서 my-web.1, my-web.2, my-web.3 컨테이너가 각각
+  서버 a, b, c에 할당된 것을 볼 수 있습니다.
+
+   3. 최종 테스트
+      이제 웹 브라우저를 열고 a, b, c 서버 중 아무 곳의 IP로 접속해 보세요.
+
+       * http://<SERVER_A_IP>:8080
+       * http://<SERVER_B_IP>:8080
+       * http://<SERVER_C_IP>:8080
+
+      어떤 IP로 접속하든 "Welcome to nginx!" 페이지가 나타나면 Docker Swarm의 라우팅
+  메시(Routing Mesh)가 정상적으로 동작하는 것입니다.
+
+   4.  Nginx 서비스 종료 
+     docker service rm my-web 
+
+  이제 Docker Swarm 클러스터가 성공적으로 구성되었습니다. 이 환경에서 다양한 서비스를
+  배포하고 테스트해 볼 수 있습니다.
+  
+   5. a, b, c 서버에서 docker info 명령을 실행하여 swarm 부분을 확인한다 
+      docker info
+      
+      manager node  실행 결과 
+ ...
+ Swarm: active
+  NodeID: qisbqmbzb44gbh076cejhiddj
+  Is Manager: true
+  ClusterID: h8983iq9wzhiavct5qqbfrx4z
+  Managers: 1
+  Nodes: 3
+  Data Path Port: 4789
+  Orchestration:
+   Task History Retention Limit: 5
+  Raft:
+   Snapshot Interval: 10000
+   Number of Old Snapshots to Retain: 0
+   Heartbeat Tick: 1
+   Election Tick: 10
+  Dispatcher:
+   Heartbeat Period: 5 seconds
+  CA Configuration:
+   Expiry Duration: 3 months
+   Force Rotate: 0
+  Autolock Managers: false
+  Root Rotation In Progress: false
+  Node Address: 192.168.80.132
+  Manager Addresses:
+   192.168.80.132:2377
+  ...
+  
+  각 노드 실행 결과 
+  ...
+ Swarm: active
+  NodeID: kqhkoni5je707flvar92wt76j
+  Is Manager: false
+  Node Address: 192.168.80.133
+  Manager Addresses:
+   192.168.80.132:2377
+  ...
+ 
+ 6. Manager에 등록된 node을 제거할 때는 제거할 노드에서 아래 명령어를 입력한다
+ 
+   docker swarm leave 
+ 
+ 7. Manager노드에서 docker node ls 로 노드가 제거 되었는지 확인 한다 
+   docker node ls
+ 
+ 8. manager에서 Down 상태의 노드를 제거 할 때
+   docker node rm node2
+   

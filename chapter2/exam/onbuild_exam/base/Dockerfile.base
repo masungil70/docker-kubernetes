@@ -1,0 +1,15 @@
+# 1. Python 공식 이미지를 기반으로 시작
+FROM python:3.9-slim
+
+# 2. 작업 디렉토리 설정
+WORKDIR /usr/src/app
+
+# 3. ONBUILD 트리거 설정
+#    이 이미지를 사용하는 자식 이미지가 빌드될 때 아래 명령들이 실행됩니다.
+ONBUILD COPY requirements.txt ./
+ONBUILD RUN pip install --no-cache-dir -r requirements.txt
+ONBUILD COPY . .
+
+# 4. 애플리케이션이 사용할 포트 (참고용으로 명시)
+EXPOSE 5000
+

@@ -1,0 +1,98 @@
+#macvLan 네트워크 인터페이스를 가상으로 분리해서 각각 독립적인 MAC 주소와 IP 주소를 가지게 하는 Linux 네트워크 드라이버입니다
+
+✔️ macvlan을 사용하는 경우
+macvlan은 다음과 같은 경우에 유용합니다:
+
+1. 컨테이너가 호스트와 다른 IP를 가져야 할 때
+  예: 컨테이너를 실제 물리 서버처럼 외부 네트워크에서 접근 가능하게 하고 싶을 때 (L2 브릿지 방식)
+
+2. 컨테이너가 DHCP를 직접 사용해야 할 때
+  예: 컨테이너에 실제 사설망 IP를 받아야 할 때
+
+3. 네트워크 보안 정책상 IP/MAC 구분이 필요한 경우
+  보안장비(방화벽, NAC 등)가 MAC/IP 기반 식별을 요구하는 경우
+
+
+macvlan을 많이 사용하지 않는 이유
+  - 네트워크 설정 복잡 : L2 브로드캐스트 도메인을 요구하고, 스위치 설정도 필요할 수 있음
+  - 호스트와 통신 안 됨 : 기본 설정에서는 macvlan으로 생성된 컨테이너가 호스트와 통신하지 못함
+  - 클라우드에서 제한적 사용 : AWS, GCP 등 클라우드에서는 macvlan을 지원하지 않거나, 제약이 많음
+  - 대신 bridge, overlay 사용	대부분은 bridge (로컬 통신) 또는 overlay (클러스터 간 통신)를 사용함
+
+# 전체 구성 요약
+1. 서버 1, 서버 2: VMware 내 Ubuntu Server 또는 CentOS 등 설치
+2. 도커 컨테이너 A, B: 각 서버에서 macvlan 네트워크에 연결된 컨테이너
+3. 192.168.1.0/24: 스위치 또는 공유기에서 제공하는 네트워크
+4. VMware 설정: 브리지 모드 사용
+
+#구축 순서
+1. VMware 가상 머신(VM) 생성 및 네트워크 구성
+	- 서버 1, 서버 2에 해당하는 VM 2대 생성
+    . 운영체제: Ubuntu Server 22.04 LTS (또는 원하는 Linux)
+    . 메모리: 2~4GB 이상
+    . 디스크: 20GB 이상
+  - 네트워크 설정 (브리지 모드)
+    . VMware에서 VM의 네트워크 어댑터 설정을 "Bridged" 모드로 설정 -> 구성 설정(유선 선택)
+
+2. 각 VM에 Docker 설치
+sudo apt-get update 
+sudo apt-get install apt-transport-https ca-certificates curl gnupg-agent software-properties-common -y
+curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo apt-key add -
+sudo add-apt-repository "deb [arch=amd64] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable"
+sudo apt-get update
+sudo apt-get install docker-ce docker-ce-cli containerd.io -y
+sudo usermod -aG docker $USER
+newgrp docker 
+  
+3. Macvlan 네트워크 생성 (서버 1, 서버 2 각각 수행)
+  3-1. 물리 NIC 이름 확인
+    ip addr
+  결과 
+    2: ens33: <BROADCAST,MULTICAST,UP,LOWER_UP>
+  ens33 -> 네트웍 인터페이스 명 
+  
+
+3-2. Macvlan 네트워크 생성
+아래 명령은 컨테이너가 라우터와 직접 통신 가능하도록 bridge 모드로 Macvlan을 구성합니다.
+
+서버 1:
+docker network create -d macvlan \
+  --subnet=192.168.1.0/24 \
+  --gateway=192.168.1.1 \
+  -o parent=ens33 \
+  macvlan_net
+  
+  
+서버 2:
+docker network create -d macvlan \
+  --subnet=192.168.1.0/24 \
+  --gateway=192.168.1.1 \
+  -o parent=ens33 \
+  macvlan_net
+
+4. Macvlan 네트워크에 연결된 Docker 컨테이너 실행
+서버 1:
+  docker run -dit --name containerA \
+    --network macvlan_net \
+    --ip 192.168.1.64 \
+    nginx
+
+서버 2:
+  docker run -dit --name containerB \
+    --network macvlan_net \
+    --ip 192.168.1.128 \
+    nginx
+    
+5. 통신 테스트
+  서버 1:
+     ping 192.168.1.128
+     docker exec -it containerA ping 192.168.1.128
+
+  서버 2:
+     ping 192.168.1.64
+     docker exec -it containerB ping 192.168.1.64
+  
+  정상적으로 ping이 오가면 Macvlan 간 통신 성공  
+     
+     
+    

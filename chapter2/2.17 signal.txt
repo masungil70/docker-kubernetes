@@ -1,0 +1,178 @@
+STOPSIGNAL 사용법 
+
+STOPSIGNAL은 Dockerfile에서 컨테이너가 정상적으로 종료될 때 사용될 시스템 콜(system call) 시그널을
+지정하는 명령어입니다. 이 설정을 통해 애플리케이션이 "우아한 종료(Graceful Shutdown)"를 수행하도록 만들
+수 있습니다.
+
+1. STOPSIGNAL 상세 설명
+
+가. 시그널(Signal)이란?
+
+리눅스/유닉스 시스템에서 시그널은 프로세스에게 특정 이벤트가 발생했음을 알리는 간단한 메시지입니다. 
+예를 들어, 터미널에서 Ctrl+C를 누르면 SIGINT라는 시그널이 실행 중인 프로세스에 전달됩니다.
+
+주요 시그널은 다음과 같습니다.
+
+ - `SIGTERM` (기본값): "프로세스를 정상적으로 종료해달라"는 요청입니다. 프로세스는 이 시그널을 받으면 파일
+   저장, 연결 종료 등 마무리 작업을 수행할 시간을 가질 수 있습니다.
+ - `SIGKILL`: "프로세스를 즉시, 강제로 종료하라"는 명령입니다. 프로세스는 이 시그널을 거부하거나 무시할 수
+   없으며, 마무리 작업 없이 즉시 종료됩니다.
+ - `SIGINT`: "인터럽트" 시그널로, 보통 사용자가 Ctrl+C를 눌렀을 때 전송됩니다. 많은 콘솔 애플리케이션이 이
+   시그널을 받으면 정상 종료하도록 설계되어 있습니다.
+
+나. Docker의 기본 종료 프로세스
+
+STOPSIGNAL을 이해하려면 docker stop 명령의 동작 방식을 알아야 합니다.
+
+ 1. docker stop <컨테이너_이름_또는_ID> 명령을 실행합니다.
+ 2. Docker는 컨테이너의 메인 프로세스(PID 1)에게 `SIGTERM` 시그널을 보냅니다.
+ 3. 애플리케이션은 SIGTERM을 받고, 정상 종료 절차(예: 데이터 저장, 연결 해제)를 시작합니다.
+ 4. Docker는 기본적으로 10초 동안 기다립니다.
+ 5. 만약 10초가 지나도 컨테이너가 종료되지 않으면, Docker는 `SIGKILL` 시그널을 보내 컨테이너를 강제로
+    종료시킵니다.
+
+다. STOPSIGNAL을 사용하는 이유
+
+많은 애플리케이션, 특히 Nginx나 Apache 같은 웹서버들은 SIGTERM을 받으면 정상적으로 종료되도록 잘
+만들어져 있습니다.
+
+하지만 우리가 직접 만든 애플리케이션이나 특정 프레임워크는 `SIGTERM`이 아닌 다른 시그널(예: `SIGINT`)을
+받아야만 정상 종료되도록 설계되었을 수 있습니다.
+
+이런 경우, docker stop이 SIGTERM을 보내면 애플리케이션은 이를 무시하고 계속 실행되다가, 결국 10초 후에
+SIGKILL에 의해 강제로 종료됩니다. 이 과정에서 데이터가 유실되거나 파일이 손상될 수 있습니다.
+
+STOPSIGNAL은 바로 이 문제를 해결하기 위해 사용됩니다. docker stop이 보낼 기본 시그널을 애플리케이션에
+맞는 것으로 변경하여, 진정한 "우아한 종료"를 가능하게 합니다.
+
+라. 문법
+
+Dockefile에 시그널의 이름 또는 번호를 사용할 수 있습니다. 
+가독성을 위해 이름을 사용하는 것이 좋습니다.
+
+# 시그널 이름 사용 (권장)
+STOPSIGNAL SIGINT
+# 시그널 번호 사용 (SIGINT의 번호는 2)
+STOPSIGNAL 2
+
+2. STOPSIGNAL 예제 (Python 스크립트)
+
+SIGINT(Ctrl+C)를 받았을 때만 "Cleaning up..." 메시지를 출력하고 종료하는 간단한 Python 스크립트를 통해
+STOPSIGNAL의 효과를 직접 확인해 보겠습니다.
+단계 1: 예제 작업 폴더 생성 후 작업 폴더로 이동 
+mkdir ~/stopsignal
+cd ~/stopsignal
+
+단계 2: 예제 파일 생성
+
+vi app.py 
+-------------------------------------------------
+import signal
+import time
+import sys
+import os # os 모듈 추가
+
+# 종료 시그널을 받았을 때 실행될 함수
+def graceful_shutdown(signum, frame):
+    print(f"Received signal: {signal.Signals(signum).name}. Starting graceful shutdown...")
+    # 여기에 실제 정리 작업(DB 연결 종료, 파일 저장 등)을 넣습니다.
+    print("Cleaning up complete.")
+    sys.exit(0)
+
+# SIGINT (Ctrl+C) 시그널에 대한 핸들러 등록
+signal.signal(signal.SIGINT, graceful_shutdown)
+
+# SIGTERM 시그널에 대한 핸들러 등록
+signal.signal(signal.SIGTERM, graceful_shutdown)
+
+# os.getpid()를 사용하여 올바르게 PID를 가져옵니다.
+print(f"Application started. Waiting for signals... (PID: {os.getpid()})")
+
+# 애플리케이션이 계속 실행되도록 루프를 만듭니다.
+try:
+    while True:
+        print("Working...")
+        time.sleep(2)
+except KeyboardInterrupt:
+    # 이 부분은 컨테이너 환경에서 직접 호출되지 않을 수 있습니다.
+    print("KeyboardInterrupt received.")
+
+-----------------------------------------------------
+
+단계 3: STOPSIGNAL이 없는 Dockerfile 작성
+
+먼저 STOPSIGNAL이 없을 때 어떻게 동작하는지 확인합니다.
+
+vi Dockerfile.without_stopsignal
+------------------------
+FROM python:3.9-slim
+WORKDIR /app
+COPY app.py .
+CMD ["python", "-u", "app.py"]
+-----------------------------
+
+-u 옵션: Python의 출력이 버퍼링 없이 즉시 터미널에 표시되도록 합니다. 로그 확인에 유용합니다.
+
+단계 4: STOPSIGNAL이 있는 Dockerfile 작성
+
+이제 STOPSIGNAL을 SIGINT로 지정합니다.
+
+vi Dockerfile.with_stopsignal
+---------------------------------------
+FROM python:3.9-slim
+WORKDIR /app
+COPY app.py .
+
+# docker stop 시 SIGINT 시그널을 보내도록 설정
+STOPSIGNAL SIGINT
+
+CMD ["python", "-u", "app.py"]
+------------------------------------
+
+단계 4: 빌드 및 실행으로 비교
+
+  1. 두 이미지 빌드
+
+  docker build -t app-without-stopsignal -f Dockerfile.without_stopsignal .
+  docker build -t app-with-stopsignal -f Dockerfile.with_stopsignal .
+
+  2. `STOPSIGNAL` 없는 버전 실행 및 종료
+
+  # 컨테이너를 백그라운드로 실행
+  docker run -d --name app-no-signal app-without-stopsignal
+  
+  # 로그를 실시간으로 확인
+  docker logs -f app-no-signal
+  # "Working..." 메시지가 계속 출력됩니다.
+  
+  # 새 터미널을 열고 컨테이너를 중지 (기본적으로 SIGTERM 전송)
+  docker stop app-no-signal
+   - 예상 결과: docker stop을 실행하면 app.py는 SIGTERM을 받습니다. 우리가 만든 graceful_shutdown 함수가
+     실행되어 "Received signal: SIGTERM..." 메시지를 출력하고 즉시 정상 종료됩니다. 10초를 기다릴 필요가
+     없습니다.
+
+  3. `STOPSIGNAL` 있는 버전 실행 및 종료
+
+  # 컨테이너를 백그라운드로 실행
+  docker run -d --name app-with-signal app-with-stopsignal
+  
+  # 로그를 실시간으로 확인
+  docker logs -f app-with-signal
+  # "Working..." 메시지가 계속 출력됩니다.
+  
+  # 새 터미널을 열고 컨테이너를 중지 (STOPSIGNAL에 의해 SIGINT 전송)
+  docker stop app-with-signal
+  
+  - 예상 결과: docker stop을 실행하면 STOPSIGNAL 설정에 따라 SIGINT가 전송됩니다. 로그에 "Received signal:
+     SIGINT..." 메시지가 출력되고 즉시 정상 종료됩니다.
+
+결론
+
+위 예제에서 app.py는 SIGTERM과 SIGINT를 모두 처리하도록 만들었기 때문에 두 경우 모두 정상 종료됩니다.
+
+하지만 만약 app.py가 signal.signal(signal.SIGTERM, graceful_shutdown) 라인 없이 오직 `SIGINT`만
+처리하도록 만들어졌다면, STOPSIGNAL이 없는 첫 번째 컨테이너는 docker stop 명령을 무시하다가 10초 후 강제
+종료(SIGKILL)되었을 것입니다.
+
+이처럼 STOPSIGNAL은 내 애플리케이션의 종료 방식과 Docker의 종료 명령을 일치시켜 데이터의 정합성을
+보장하고 안정적인 컨테이너 운영을 가능하게 하는 중요한 도구입니다.

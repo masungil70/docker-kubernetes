@@ -1,0 +1,25 @@
+#안좋은 예시: nginx.yaml
+#한개의 파일에 여러 파드 정의가 포함되어 있습니다.
+apiVersion: v1
+kind: Pod
+metadata:
+  name: my-nginx-pod-a
+spec:
+  containers:
+  - name: my-nginx-container
+    image: nginx:latest
+    ports:
+    - containerPort: 80
+      protocol: TCP
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: my-nginx-pod-b
+spec:
+  containers:
+  - name: my-nginx-container
+    image: nginx:latest
+    ports:
+    - containerPort: 80
+      protocol: TCP

@@ -1,0 +1,18 @@
+#version: '3.8'
+
+services:
+  # backend 서비스에 설정을 추가(override)합니다.
+  backend:
+
+
+  # nginx 서비스에 설정을 추가(override)합니다.
+  nginx:
+      
+# 운영 환경용 설정 파일입니다.
+volumes:
+  mariadb_data: # MariaDB 데이터용 네임드 볼륨 이름(컨테이너에서는 이 이름으로 참조)
+    driver: local         # 로컬 볼륨 드라이버 사용 (기본값)
+    driver_opts:
+      type: none          # 마운트 타입 (none = 파일시스템 타입 미지정, 바인드에 사용)
+      o: bind             # 옵션: bind 마운트 수행
+      device: /mnt/ssd/data # 경로만 다름  # 호스트의 실제 경로 (여기에 데이터를 저장)

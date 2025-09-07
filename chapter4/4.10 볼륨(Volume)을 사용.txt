@@ -1,0 +1,520 @@
+Docker Compose에서 볼륨(Volume)을 사용하는 방법
+
+  1. 볼륨(Volume)이란 무엇이고 왜 필요한가요?
+
+  컨테이너는 기본적으로 상태가 없고(stateless), 일시적(ephemeral)입니다. 즉, 컨테이너가 중지되거나 삭제되면 컨테이너
+  내부에 저장된 모든 데이터는 사라집니다.
+
+  볼륨은 이러한 문제를 해결하기 위해 사용됩니다. 볼륨은 컨테이너의 파일 시스템 외부에, 즉 호스트 머신이나 Docker가
+  관리하는 영역에 데이터를 저장하는 메커니즘입니다. 이를 통해 다음과 같은 장점을 얻을 수 있습니다.
+
+   * 데이터 영속성 (Persistence): 컨테이너를 삭제하거나 재생성해도 데이터가 그대로 유지됩니다. 데이터베이스 데이터,
+     사용자 업로드 파일 등을 저장하는 데 필수적입니다.
+   * 컨테이너 간 데이터 공유 (Data Sharing): 여러 컨테이너가 동일한 볼륨에 접근하여 데이터를 공유할 수 있습니다.
+   * 데이터와 컨테이너의 분리: 데이터의 생명주기를 컨테이너와 분리하여 관리할 수 있습니다.
+   * 백업 및 마이그레이션 용이성: 호스트에 저장된 볼륨 데이터만 백업하거나 다른 서버로 이전하면 되므로 관리가
+     편리합니다.
+   * 성능: Docker가 관리하는 네임드 볼륨(Named Volume)은 호스트와 컨테이너 간 I/O 성능이 바인드 마운트보다 뛰어난
+     경우가 많습니다.
+
+  2. Docker Compose에서 볼륨을 사용하는 방법
+
+  docker compose.yml 파일에서 볼륨을 정의하는 방법은 크게 두 가지가 있습니다.
+
+  가. 바인드 마운트 (Bind Mounts)
+
+  호스트 머신의 특정 파일이나 디렉토리를 컨테이너의 특정 경로에 직접 연결(마운트)하는 방식입니다.
+
+  사용법:
+  서비스의 volumes 섹션에서 호스트_경로:컨테이너_내부_경로 형식으로 지정합니다.
+
+  예시:
+vi docker compose.yml
+version: '3.8'
+
+services:
+  backend:
+    build: ./backend
+    ports:
+      - "5000:5000"
+    environment:
+      - DB_HOST=db
+      - DB_NAME=kosa_db
+      - DB_USER=kosa
+      - DB_PASSWORD=1004
+    # 호스트의 './backend' 디렉토리를 컨테이너의 '/app' 디렉토리와 동기화
+    volumes:
+      - ./backend:/app
+    depends_on:
+      - db
+
+  db:
+    image: mariadb:10.5
+    restart: always
+    # MariaDB 컨테이너를 초기화하기 위한 환경 변수들입니다.
+    environment:
+      - MYSQL_ROOT_PASSWORD=1004
+      - MYSQL_DATABASE=kosa_db
+      - MYSQL_USER=kosa
+      - MYSQL_PASSWORD=1004
+    # 호스트의 './mariadb_data' 디렉토리를 컨테이너의 '/var/lib/mysql' 디렉토리와 동기화
+    volumes:
+      - ./mariadb_data:/var/lib/mysql
+
+  nginx:
+    image: nginx:latest
+    ports:
+      - "80:80"
+    depends_on:
+      - backend
+    # 호스트의 './nginx.conf' 파일을 컨테이너의 '/etc/nginx/nginx.conf' 파일로 덮어쓰기
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro # 'ro'는 read-only(읽기 전용) 옵션
+
+  
+  실행 방법
+
+   1. 터미널에서 ~/compose/step4/volume/step1/bind 디렉터리로 이동합니다.
+   2. docker compose up --build 명령어를 실행합니다.
+   3. 다른 터미널에서 다음 작업을 계속 진행 합니다
+   4. curl http://localhost에 접속하여 결과를 확인합니다.
+   5. curl http://localhost/insert_test에 접속하여 결과 예제 자료를 DB에 등록합니다 
+   6. curl http://localhost/items에 접속하여 DB에 등록된 자료를 확인합니다 
+   7. docker compose down 명령어를 실행합니다
+   8. 모든 컨테이너가 종료되었는지 확인합니다 
+   9. volume이 설정되지 않았다면 모든 자료가 삭제됩니다 
+   10. ./mariadb_data 폴더에 자료가 존재하는지 확인한다 
+   11. 이전 터미널에서 종료된 작업을 docker compose up 으로 다시 컨테이너를 시작합니다 
+   12. 다른 터미널에서 다음 작업을 계속 진행 합니다
+   13. 이전에 등록된 자료를 아래 명령으로 확인한다 
+   14. http://localhost/lists에 접속하여 DB에 등록된 자료를 확인합니다 
+   15. docker compose down 명령어를 실행하여 모든 컨테이너가 종료되었는지 확인합니다
+     
+
+  주요 용도:
+   * 개발 환경: 호스트에서 소스 코드를 수정하면 즉시 컨테이너 내부에 반영되므로, 애플리케이션을 다시 빌드하거나
+     재시작할 필요 없이 변경 사항을 확인할 수 있습니다.
+   * 설정 파일 주입: 호스트에 있는 설정 파일을 컨테이너에 전달할 때 유용합니다.
+
+  가. 네임드 볼륨 (Named Volumes) - 가장 권장되는 방식
+
+  Docker가 직접 생성하고 관리하는 볼륨입니다. 이름으로 관리되며, 실제 데이터는 호스트의 Docker 설치 경로 내부에
+  저장됩니다. (예: /var/lib/docker/volumes/)
+
+  사용법:
+   1. docker compose.yml 파일의 최상위 레벨에 volumes 키를 정의하여 사용할 볼륨의 이름을 선언합니다.
+   2. 각 서비스의 volumes 섹션에서 볼륨이름:컨테이너_내부_경로 형식으로 연결합니다.
+
+  예시:
+vi docker compose.yml
+
+#version: '3.8'
+
+services:
+  db:
+    image: mariadb:10.5
+    restart: always
+    # MariaDB 컨테이너를 초기화하기 위한 환경 변수들입니다.
+    environment:
+      - MYSQL_ROOT_PASSWORD=1004
+      - MYSQL_DATABASE=kosa_db
+      - MYSQL_USER=kosa
+      - MYSQL_PASSWORD=1004
+    # 'db-data'라는 네임드 볼륨을 컨테이너의 '/var/lib/mysql' 경로에 연결
+    volumes:
+      - db-data:/var/lib/mysql
+
+  backend:
+    build: ./backend
+    ports:
+      - "80:8000"
+    environment:
+      - DB_HOST=db
+      - DB_NAME=kosa_db
+      - DB_USER=kosa
+      - DB_PASSWORD=1004
+    # 'app-logs'라는 네임드 볼륨을 컨테이너의 '/app/logs' 경로에 연결
+    volumes:
+      - app-logs:/app/logs
+
+# 사용할 네임드 볼륨 목록을 정의
+volumes:
+  db-data:
+  app-logs:
+
+
+  이 예시에서 db-data 볼륨은 MySQL 데이터베이스 파일을 저장하고, app-logs 볼륨은 백엔드 애플리케이션의 로그를
+  저장합니다. docker compose down 명령으로 컨테이너를 내려도 db-data와 app-logs 볼륨은 삭제되지 않고 남아있습니다.
+
+
+  실행 방법
+
+   1. 터미널에서 ~/compose/step4/volume/step1/named 디렉터리로 이동합니다.
+   2. docker compose up --build 명령어를 실행합니다.
+   3. 다른 터미널에서 다음 작업을 계속 진행 합니다
+   4. curl http://localhost에 접속하여 결과를 확인합니다.
+   5. curl http://localhost/insert_test에 접속하여 결과 예제 자료를 DB에 등록합니다 
+   6. curl http://localhost/items에 접속하여 DB에 등록된 자료를 확인합니다 
+   7. docker compose down 명령어를 실행합니다
+   8. 모든 컨테이너가 종료되었는지 확인합니다 
+   9. volume이 설정되지 않았다면 모든 자료가 삭제됩니다 
+   10. inspect 명령어 상세 정보 확인 한다 
+       docker compose를 사용하면 기본적으로 폴더명_객체명으로 되어 있습니다 
+
+       네트웩 상세 정보 확인합니다
+         docker inspect named_default  
+
+       컨테이너 상세 정보 확인합니다 
+         docker inspect named-backend-1
+         docker inspect named-db-1
+       
+       볼륨 상세 정보 확인합니다
+         docker inspect named-db-data
+         docker inspect named-app-logs
+         
+   11. /var/lib/docker/volumes/named_db-data/_data 폴더에 자료가 존재하는지 확인합니다 
+   12. 만약 위의 폴더를 모르는 상태에서 실행중인 모든 데이터 베이스를 host의 저장소롤 백업은 아래와 같이 하시면 됩니다 
+       docker compose exec db mysqldump -u root -p'1004' --all-databases > all_databases_backup.sql
+       
+       특정 데이터 베이스 백업을 하는 경우 
+       
+       docker compose exec db mysqldump -u root -p'1004' kosa_db > kosa_db_backup.sql
+       
+       
+   13. 이전 터미널에서 종료된 작업을 docker compose up 으로 다시 컨테이너를 시작합니다 
+   14. 다른 터미널에서 다음 작업을 계속 진행 합니다
+   15. 이전에 등록된 자료를 아래 명령으로 확인한다 
+   16. curl http://localhost/items에 접속하여 DB에 등록된 자료를 확인합니다 
+   17. docker compose down 명령어를 실행하여 모든 컨테이너가 종료되었는지 확인합니다
+   18. docker compose 에서 필요 없는 모든 볼륨 삭제하는 방법 
+       docker compose down -v
+   19. 볼륨 이름 확인 및 삭제
+        docker-compose가 생성한 볼륨의 전체 이름(예: volume_db-data)을 확인하고 docker volume rm 명령으로 삭제합니다.
+        # 1. 전체 볼륨 목록에서 정확한 이름을 확인합니다.
+        docker volume ls
+        
+        # 2. 확인된 이름으로 특정 볼륨을 삭제합니다.
+        # (프로젝트 이름이 volume이라고 가정)
+         docker volume rm  named_db-data
+   20. 이전 터미널에서 종료된 작업을 docker compose up 으로 다시 컨테이너를 시작합니다 
+   21. 다른 터미널에서 다음 작업을 계속 진행 합니다
+   22. curl http://localhost/items에 접속하여 DB에 등록된 자료를 확인합니다 
+       자료가 삭제되어 데이터가 없음을 확인합니다 
+       
+   23. 백업으로 저장한 데이터 베이스를 다시 복구해 봅니다 
+    1. 단일 데이터베이스 복원 (kosa_db.sql)
+
+      mysqldump를 사용하여 특정 데이터베이스(예: kosa_db) 하나만 백업한 경우입니다.
+
+      복원 전제: 복원하려는 데이터베이스(예: kosa_db)가 서버에 미리 생성되어 있어야 합니다.
+      (docker compose.yml의 MYSQL_DATABASE 환경 변수 설정으로 컨테이너가 처음 실행될 때 보통 자동으로
+      생성됩니다.)
+
+      복원 명령어:
+
+       cat kosa_db_backup.sql | docker compose exec -T db mysql -u root -p'1004' kosa_db
+
+      명령어 분석:
+       * cat backup.sql |: 호스트에 저장된 backup.sql 파일을 읽어 그 내용을 파이프(|)로 다음 명령어에
+         전달합니다.
+       * docker-compose exec -T db: db 서비스 컨테이너에서 명령을 실행합니다. -T 옵션은 파이프로 데이터를
+         전달받기 위해 필요합니다.
+       * mysql -u root -p'rootpassword' mydatabase: 컨테이너의 mysql 클라이언트를 실행하고, mydatabase를
+         대상으로 지정한 뒤, 파이프로 들어오는 SQL 구문(백업 내용)을 실행하여 데이터를 복원합니다.
+ 
+     2. 모든 데이터베이스 복원 (all_databases_backup.sql)
+
+      --all-databases 옵션으로 모든 데이터베이스를 백업한 경우입니다.
+
+      복원 전제: 이 백업 파일에는 데이터베이스를 생성하는 CREATE DATABASE 구문까지 포함되어 있으므로, 미리
+      데이터베이스를 만들어 둘 필요가 없습니다.
+
+      복원 명령어:
+
+       cat all_databases_backup.sql | docker compose exec -T db mysql -u root -p'1004'
+
+      명령어 분석:
+       * 위 단일 데이터베이스 복원 명령어와 거의 동일하지만, 마지막에 데이터베이스 이름을 지정하지 않습니다.
+       * mysql 클라이언트는 특정 데이터베이스를 지정하지 않은 상태에서 입력되는 SQL 구문을 그대로 실행하며, 백업
+         파일에 있는 CREATE DATABASE ... 와 USE ... 구문에 따라 데이터베이스를 만들고 데이터를 채워 넣게 됩니다.             
+   
+   24. curl http://localhost/items에 접속하여 DB에 등록된 자료를 확인합니다 
+       자료가 복구 되어 데이터가 정상 출력되는 것을 확인합니다 
+       
+   25. docker compose down 명령어를 실행하여 모든 컨테이너가 종료되었는지 확인합니다
+   
+ 
+  3. 볼륨 관리 명령어
+
+  Docker CLI를 통해 볼륨을 직접 관리할 수 있습니다.
+
+   * 볼륨 목록 확인
+     docker compose volumes
+
+   * 볼륨 상세 정보 확인 (실제 경로 등)
+     docker volume inspect [볼륨이름]
+
+   * 볼륨 삭제
+    docker volume rm [볼륨이름]
+
+   * 사용하지 않는 모든 볼륨 한번에 삭제
+    docker volume prune
+
+  4. 바인드 마운트와 네이드 볼륨 혼합 사용 방법 
+   바인드와 네이드 혼합 사용하는 경우는, 자주 수정하는 소스 코드나 설정 파일은 `바인드 마운트`로 연결하고,
+   애플리케이션이 생성/관리하며 안전하게 보존되어야 할 데이터는 `네임드 볼륨`으로 분리하는 것입니다
+  
+  네이드 볼륨 : mariadb_data, backend_logs
+  바인드 마운트 : frontend 폴더
+  
+  예제 폴더 : step4/volume/step2 
+  
+  폴더 구조 
+  step2
+    ├── backend
+    │   ├── Dockerfile
+    │   ├── main.py
+    │   └── requirements.txt
+    ├── docker-compose.yml
+    ├── frontend
+    │   └── index.html
+    └── nginx
+        └── nginx.conf
+  
+  실행 방법 
+    1. 최초 실행 
+      docker compose up -d --build 
+    
+    2. 실행 로그 확인 
+      docker compose logs 
+      
+    3. 브라우저를 실행하고 주소창에 192.168.80.132 입력합니다 
+        새 아이템 등록합니다 
+        새롭게 등록된 아이템 목록은 테이블로 출력됩니다 
+        화면을 새롭게 고치기 위해 F5를 눌러 실행하시면 아이템 목록이 출력됩니다 
+      
+    4. 이미지 재빌드 하는 것이 아닌 실행  
+      docker compose up -data
+      
+    5. 서비스 종료 
+      docker compose down  
+       
+    6. 서비스 종료 및 볼륨 삭제 
+      docker compose down -v 
+    
+
+
+  4.  호스트 경로를 이용한 네임드 볼륨 (Named Volume with a Host Path)
+  
+   * 네임드 볼륨(Named Volume): mariadb_data처럼 이름으로 참조하고 관리합니다.
+   * 호스트 경로(Host Path): 데이터가 저장되는 위치(source)가 Docker가 관리하는 내부 경로가 아닌, 사용자가
+     명시적으로 지정한 호스트(PC)의 특정 경로입니다.
+   * 주의 : 이방법을 사용할 때는 반드시 해당 폴더가 존재해야 함
+    
+   vi docker-compose.yml
+   
+...
+   # 최상위 레벨에서 사용할 네임드 볼륨들을 정의 하고 폴더와 파일을 호스트에 바인드 마운트합니다.
+volumes:
+  mariadb_data: # MariaDB 데이터용 네임드 볼륨 이름(컨테이너에서는 이 이름으로 참조)
+    driver: local         # 로컬 볼륨 드라이버 사용 (기본값)
+    driver_opts:
+      type: none          # 마운트 타입 (none = 파일시스템 타입 미지정, 바인드에 사용)
+      o: bind             # 옵션: bind 마운트 수행
+      device: ./mariadb_data  # 호스트의 실제 경로 (여기에 데이터를 저장)
+    backend_logs: # FastAPI 로그용 네임드 볼륨
+      driver: local         # 로컬 볼륨 드라이버 사용 (기본값)
+      driver_opts:
+        type: none          # 마운트 타입 (none = 파일시스템 타입 미지정, 바인드에 사용)
+        o: bind             # 옵션: bind 마운트 수행
+        device: ./backend_logs  # 호스트의 실제 경로 (여기에 데이터를 저장)
+
+    바인드 폴더 생성 
+      mkdir mariadb_data
+      mkdir backend_logs
+    
+     
+    폴더 구조 
+      step3
+      ├── backend
+      │   ├── Dockerfile
+      │   ├── main.py
+      │   └── requirements.txt
+      ├── backend_logs          # 폴더 생성 할 것 
+      ├── docker-compose.yml    # 호스트 경로를 이용한 네임드 볼륨을 추가함 
+      ├── frontend
+      │   └── index.html
+      ├── mariadb_data          # 폴더 생성 할 것 
+      └── nginx
+          └── nginx.conf  
+     
+  실습 방법
+    1. 최초 실행 
+      docker compose up -d --build 
+    
+    2. 실행 로그 확인 
+      docker compose logs 
+      
+    3. 브라우저를 실행하고 주소창에 192.168.80.132 입력합니다 
+        새 아이템 등록합니다 
+        새롭게 등록된 아이템 목록은 테이블로 출력됩니다 
+        화면을 새롭게 고치기 위해 F5를 눌러 실행하시면 아이템 목록이 출력됩니다 
+      
+    4. 이미지 재빌드 하는 것이 아닌 실행  
+      docker compose up -data
+      
+    5. 서비스 종료 
+      docker compose down  
+       
+    6. 서비스 종료 및 볼륨 삭제 
+      docker compose down -v 
+       
+     
+     
+  5. 호스트 경로를 이용한 네임드 볼륨 (Named Volume with a Host Path) 이유  
+  호스트 경로를 이용한 네임드 볼륨 (Named Volume with a Host Path) 설정은 
+  '설정의 분리(Separation of Concerns)' 와 '코드의 재사용성 및 이식성(Reusability and Portability)' 을 높이는 방법을 제공합니다 
+
+  5.1 설정의 분리 (관심사의 분리)
+
+  Docker Compose 파일은 크게 두 가지 정보를 담고 있습니다.
+
+   * "서비스(Service)는 무엇을 필요로 하는가?" (애플리케이션의 관점)
+       * 예: "MariaDB 데이터베이스 서비스는 mariadb_data라는 이름의 저장소가 필요하다."
+   * "그것을 어떻게 제공할 것인가?" (인프라/환경의 관점)
+       * 예: "mariadb_data 저장소는 사실 호스트 PC의 ./mariadb_data 폴더를 연결한 것이다."
+
+  일반적인 바인드 마운트 (volumes: - ./mariadb_data:/var/lib/mysql)는 이 두 가지 정보를 서비스 설정 안에 섞어 놓습니다.
+
+   # 안 좋은 예: 서비스 설정에 인프라 정보가 섞여 있음
+   services:
+     db:
+       image: mariadb
+       # "MariaDB는 저장소가 필요하다" 와 "그 저장소는 호스트의 ./mariadb_data 이다" 라는
+       # 두 가지 정보가 한 줄에 섞여 있습니다.
+       volumes:
+         - ./mariadb_data:/var/lib/mysql
+
+  하지만 질문하신 방식은 이 둘을 명확하게 분리합니다.
+
+    # 좋은 예: 서비스와 인프라 설정이 분리됨
+    services:
+      db:
+        image: mariadb
+        volumes:
+          # 1. 애플리케이션의 관점: "나는 'mariadb_data' 라는 이름의 저장소가 필요해."
+          #    (이 서비스는 데이터가 호스트 PC 어디에 저장되는지 전혀 신경쓰지 않습니다.)
+          - mariadb_data:/var/lib/mysql
+   
+    # --- 설정의 경계선 ---
+    volumes:
+      # 2. 인프라의 관점: "OK. 'mariadb_data'는 내가 제공할게.
+      #    그건 호스트 PC의 ./mariadb_data 폴더에 연결해주면 돼."
+      mariadb_data:
+        driver: local
+        driver_opts:
+          type: none
+          o: bind
+          device: ./mariadb_data
+
+  이렇게 서비스 설정과 인프라(환경) 설정을 분리하면 각 부분의 역할이 명확해지고, 코드를 이해하고
+  관리하기가 훨씬 쉬워집니다.
+
+  5.2 재사용성 및 이식성 (여러 환경에서 활용)
+
+  이 방식의 가장 큰 장점은 다양한 환경(개발, 테스트, 운영 등)에서 `docker-compose.yml` 파일을 재사용하기
+  용이하다는 점입니다.
+
+  예를 들어, 환경에 따라 데이터 저장 위치가 달라져야 하는 시나리오를 생각해 봅시다.
+
+   * 개발 환경(`dev`): 내 PC의 프로젝트 폴더(C:\Users\masun\health_exam\docker-compose\mariadb_data)에
+     저장해서 쉽게 확인하고 싶다.
+   * 운영 환경(`prod`): 실제 서버의 고성능 SSD 경로(/mnt/ssd/data)에 데이터를 저장해서 성능을 높이고 싶다.
+
+  만약 일반적인 바인드 마운트를 썼다면, 각 환경마다 docker-compose.yml 파일의 services.db.volumes 부분을
+  직접 수정해야 합니다. 이는 실수의 원인이 될 수 있습니다.
+
+  하지만 질문하신 방식을 사용하면, 서비스 정의는 전혀 건드리지 않고 docker-compose.override.yml 같은
+  파일을 이용해 volumes 부분만 각 환경에 맞게 덮어쓸 수 있습니다.
+
+  `docker-compose.yml` (공통)
+   services:
+     db:
+       image: mariadb
+       volumes:
+         - mariadb_data:/var/lib/mysql # 이 부분은 어떤 환경에서도 바뀌지 않습니다.
+
+  `docker-compose.dev.yml` (개발 환경용)
+
+   # 개발 환경에서는 'mariadb_data'를 현재 폴더에 연결
+   volumes:
+     mariadb_data:
+       driver: local
+       driver_opts:
+         device: ./mariadb_data
+         o: bind
+         type: none
+
+  `docker-compose.prod.yml` (운영 환경용)
+
+   # 운영 환경에서는 'mariadb_data'를 SSD 경로에 연결
+   volumes:
+     mariadb_data:
+       driver: local
+       driver_opts:
+         device: /mnt/ssd/data # 경로만 다름
+         o: bind
+         type: none
+
+  이렇게 하면 운영 환경에서 배포할 때 docker-compose -f docker-compose.yml -f docker-compose.prod.yml up
+  명령으로 두 파일을 조합하여 실행할 수 있습니다. 핵심 서비스 로직의 변경 없이 환경에 따른 인프라 구성만
+  유연하게 변경하는 것입니다.
+
+  폴더구조
+   /mnt/ssd/data  #운영용
+   step4
+    ├── backend
+    │   ├── Dockerfile
+    │   ├── main.py
+    │   └── requirements.txt
+    ├── backend_logs
+    ├── docker-compose.dev.yml   #개발용 
+    ├── docker-compose.prod.yml  #운영용
+    ├── docker-compose.yml       #기본
+    ├── frontend
+    │   └── index.html
+    ├── mariadb_data
+    └── nginx
+        └── nginx.conf
+  
+  
+  바인드 폴더 생성 
+      mkdir mariadb_data
+      mkdir backend_logs  #개발 
+      sudo mkdir -p /mnt/ssd/data  #운영 
+    
+
+  실습 방법
+    1. 개발 최초 실행 (docker-compose.override.yml이 아닌 경우 순서대로 명시해야함)
+      docker compose -f docker-compose.yml -f docker-compose.dev.yml up 
+    
+    1. 운영 최초 실행
+      docker compose -f docker-compose.yml -f docker-compose.prod.yml up 
+
+    2. 실행 로그 확인 
+      docker compose logs 
+      
+    3. 브라우저를 실행하고 주소창에 192.168.80.132 입력합니다 
+        새 아이템 등록합니다 
+        새롭게 등록된 아이템 목록은 테이블로 출력됩니다 
+        화면을 새롭게 고치기 위해 F5를 눌러 실행하시면 아이템 목록이 출력됩니다 
+      
+    4. 이미지 재빌드 하는 것이 아닌 실행  
+      docker compose up -data
+      
+    5. 서비스 종료 
+      docker compose down  
+       
+    6. 서비스 종료 및 볼륨 삭제 
+      docker compose down -v 
+       

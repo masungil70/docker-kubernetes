@@ -1,0 +1,34 @@
+# 이 YAML 파일은 Readiness Probe의 다양한 옵션을 설정하는 파드를 정의합니다.
+apiVersion: v1
+kind: Pod
+metadata:
+  name: probe-options-example
+  labels:
+    my-readinessprobe: test
+spec:
+  containers:
+  - name: probe-options-example
+    image: nginx
+    # readinessProbe는 컨테이너가 요청을 처리할 준비가 되었는지를 검사합니다.
+    # 검사에 실패하면, 해당 파드는 서비스의 엔드포인트에서 제외되어 트래픽을 받지 않습니다.
+    readinessProbe:
+      httpGet:
+        port: 80
+        path: /
+      # periodSeconds: 프로브를 실행하는 주기 (초). 기본값은 10초.
+      periodSeconds: 5
+      # initialDelaySeconds: 컨테이너가 시작된 후 첫 프로브를 실행하기까지의 대기 시간 (초). 기본값은 0초.
+      initialDelaySeconds: 10
+      # timeoutSeconds: 프로브 타임아웃 시간 (초). 기본값은 1초.
+      timeoutSeconds: 1
+      # successThreshold: 프로브가 실패한 후 성공으로 간주되기까지 필요한 연속 성공 횟수. 기본값은 1.
+      successThreshold: 1
+      # failureThreshold: 프로브가 성공한 후 실패로 간주되기까지 필요한 연속 실패 횟수. 기본값은 3.
+      failureThreshold: 3
+
+      # 테스트 다른 창으로 watch kubectl get pods  probe-options-example 실행한다
+      # 다른 창으로  kubectl apply -f probe-options.yaml 실행 하고 
+      #  watch 창의 결과를 확인한다
+      # readinessProbe에는 initialDelaySeconds: 10 옵션이 설정되어 있어, 컨테이너가 시작되고
+      # 10초 후에 첫 번째 검사를 시작합니다. 따라서 파드 생성 직후에는 READY 상태가
+      # 0/1이었다가, 약 10초 후에 1/1로 변경됩니다. 

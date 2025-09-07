@@ -1,0 +1,23 @@
+# 이 YAML 파일은 Pod를 정의합니다.
+# 이 Pod는 CPU와 메모리의 requests와 limits를 동일하게 설정했습니다.
+# 이렇게 설정된 Pod는 쿠버네티스에서 'Guaranteed' QoS 클래스로 분류됩니다.
+# Guaranteed Pod는 가장 높은 우선순위를 가지며, 노드에 리소스가 부족해져도 가장 마지막까지 종료되지 않습니다.
+# 데이터베이스와 같이 예측 가능성과 안정성이 매우 중요한 애플리케이션에 적합합니다.
+apiVersion: v1
+kind: Pod
+metadata:
+  name: resource-limit-pod-guaranteed
+  labels:
+    name: resource-limit-pod-guaranteed
+spec:
+  containers:
+  - name: nginx
+    image: nginx:latest
+    resources:
+      # limits와 requests를 동일하게 설정하여 Guaranteed QoS를 보장합니다.
+      limits:
+        memory: "256Mi"
+        cpu: "1000m"
+      requests:
+        memory: "256Mi"
+        cpu: "1000m"

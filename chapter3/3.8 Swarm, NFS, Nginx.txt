@@ -1,0 +1,309 @@
+Docker Swarm, NFS, Nginx를 연동하여 확장 가능하고 안정적인 웹 서비스를 구축하는 방법
+
+1단계: 사전 준비 및 계획
+
+먼저, 3대의 리눅스 서버가 준비되어야 합니다. 이 가이드에서는 Ubuntu 24.04 LTS를 기준으로
+설명합니다.
+
+서버 역할을 다음과 같이 정하겠습니다.
+
+┌───────────────┬────────────────────────────────────┬────────────────┐
+│ 서버 호스트명 │ 역할                               │ IP 주소 (예시) │
+├───────────────┼────────────────────────────────────┼────────────────┤
+│ server-a      │ Docker Swarm 마스터 + NFS 서버     │ 192.168.0.10   │
+│ server-b      │ Docker Swarm 워커 + NFS 클라이언트 │ 192.168.0.11   │
+│ server-c      │ Docker Swarm 워커 + NFS 클라이언트 │ 192.168.0.12   │
+└───────────────┴────────────────────────────────────┴────────────────┘
+
+2단계: NFS 서버 설정 (server-a에서 실행)
+
+Nginx의 HTML 파일들을 저장하고 모든 노드에 공유해 줄 NFS 서버를 server-a에 구성합니다.
+
+ 1. NFS 서버, vim 패키지 설치
+
+   sudo apt-get update
+   sudo apt-get install -y nfs-kernel-server vim
+
+ 2. 공유할 디렉토리 생성
+    이 디렉토리가 Nginx의 웹 루트 디렉토리가 됩니다  
+   
+   sudo mkdir -p /mnt/nfs/html
+
+ 3. 디렉토리 권한 설정
+    NFS 공유를 위해 디렉토리 소유자를 nobody:nogroup으로 변경합니다.
+
+   sudo chown nobody:nogroup /mnt/nfs/html
+   sudo chmod 777 /mnt/nfs/html
+
+ 4. NFS 공유 설정 파일 수정
+    /etc/exports 파일에 어떤 디렉토리를 누구에게 공유할지 설정합니다.
+
+   sudo vi /etc/exports
+
+ 파일 맨 아래에 다음 내용을 추가합니다. 특정 IP 대역 192.168.0.0/24을 입력하세요.
+
+    /mnt/nfs/html    192.168.0.0/24(rw,sync,no_subtree_check)
+
+ 5. NFS 설정 적용 및 서비스 재시작
+
+   sudo exportfs -a
+   sudo systemctl restart nfs-kernel-server
+
+ 6. 테스트용 HTML 파일 생성
+    나중에 Nginx가 잘 작동하는지 확인하기 위해 간단한 index.html 파일을 만들어 둡니다.
+
+    echo "<h1>Hello from NFS Server</h1>" | sudo tee /mnt/nfs/html/index.html
+
+이제 server-a는 NFS 서버로서 /mnt/nfs/html 디렉토리를 공유할 준비가 되었습니다.
+
+3단계: NFS 클라이언트 설정 (server-b, server-c에서 실행)
+
+워커 노드들이 NFS 서버의 공유 폴더를 자신의 로컬 폴더처럼 사용하기 위한 설정입니다. 
+아래 과정은 `server-b`와 `server-c` 두 서버 모두에서 각각 실행해야 합니다.
+
+ 1. NFS 클라이언트, vim 패키지 설치
+
+   sudo apt-get update
+   sudo apt-get install -y nfs-common vim
+
+ 2. 마운트할 로컬 디렉토리 생성
+    NFS 공유 폴더를 연결할 로컬 디렉토리를 만듭니다.
+
+   sudo mkdir -p /mnt/nfs/html
+
+ 3. NFS 공유 폴더 마운트 테스트
+    192.168.0.10를 server-a의 IP(192.168.0.10)로 변경하여 실행합니다.
+
+   sudo mount 192.168.0.10:/mnt/nfs/html /mnt/nfs/html
+
+ 4. 마운트 확인
+    df -h 명령어로 마운트가 잘 되었는지 확인하고, ls 명령어로 server-a에서 만든 테스트 파일이 보이는지 확인합니다.
+
+   df -h
+   ls -l /mnt/nfs/html
+
+    index.html 파일이 보이면 성공입니다.
+
+ 5. 부팅 시 자동 마운트 설정
+    서버가 재부팅되어도 NFS 공유 폴더가 자동으로 마운트되도록 /etc/fstab에 등록합니다.
+
+   sudo vi /etc/fstab
+
+  192.168.0.10:/mnt/nfs/html    /mnt/nfs/html   nfs auto,nofail,noatime,nolock,intr,tcp,actimeo=1800 0 0
+
+ 6. 설정 적용
+    테스트 마운트를 해제하고 fstab 설정으로 다시 마운트합니다.
+
+   sudo umount /mnt/nfs/html
+   sudo mount -a
+
+    다시 df -h로 확인했을 때 마운트가 되어있다면 성공입니다.
+
+
+4단계: Docker 설치 (server-a, server-b, server-c 모두 실행)
+
+세 대의 모든 서버에서 아래 명령어를 실행하여 Docker를 설치합니다.
+
+ 1. Docker 공식 설치 스크립트 실행
+    편의를 위해 공식 스크립트를 사용하여 최신 버전의 Docker를 설치합니다.
+
+    curl -fsSL https://get.docker.com -o get-docker.sh
+    sudo sh get-docker.sh
+
+ 2. `sudo` 없이 `docker` 명령어 사용하기
+    매번 sudo를 입력하지 않도록 현재 사용자를 docker 그룹에 추가합니다.
+
+   sudo usermod -aG docker $USER
+
+    ※ 중요: 위 명령 실행 후, 터미널을 닫고 다시 접속하거나 newgrp docker 명령을 실행해야 변경 사항이 적용됩니다.
+
+
+5단계: Docker Swarm 클러스터 구성
+
+이제 세 대의 서버를 하나의 Docker Swarm 클러스터로 묶습니다.
+
+ 1. Swarm 마스터 초기화 (`server-a`에서 실행)
+    [MASTER_IP]를 server-a의 IP(192.168.0.10)로 변경하여 실행합니다.
+
+   docker swarm init --advertise-addr 192.168.0.10
+
+    실행 결과로 워커 노드가 클러스터에 참여할 수 있는 docker swarm join 명령어가 출력됩니다. 이 명령어를 반드시 복사해두세요.
+    예시:
+   docker swarm join --token SWMTKN-1-abc...xyz 192.168.0.10:2377
+
+ 2. 워커 노드를 클러스터에 참여시키기 (`server-b`, `server-c`에서 실행)
+    server-b와 server-c에서 위에서 복사한 docker swarm join ... 명령어를 그대로 붙여넣고 실행합니다.
+    "This node joined a swarm as a worker." 메시지가 나오면 성공입니다.
+
+ 3. 클러스터 상태 확인 (`server-a`에서 실행)
+    마스터 노드에서 아래 명령어를 실행하여 클러스터에 포함된 노드 목록을 확인합니다.
+
+   docker node ls
+
+   server-a, server-b, server-c 세 노드가 모두 Ready 상태로 보이면 클러스터 구성이 완료된 것입니다.
+
+6단계: NFS 볼륨을 사용하는 Nginx 서비스 배포 (server-a에서 실행)
+
+마지막으로, Swarm 클러스터 위에서 Nginx 서비스를 배포합니다. 이때, 각 노드에 마운트된 NFS
+폴더를 Nginx 컨테이너의 웹 루트 폴더로 연결하는 것이 핵심입니다.
+
+ 1. Nginx 서비스 생성
+    마스터 노드(server-a)에서 아래 명령어를 실행하여 Nginx 서비스를 생성합니다.
+
+   docker service create \
+     --name my-nginx \
+     --publish published=8080,target=80 \
+     --replicas 3 \
+     --mount type=bind,source=/mnt/nfs/html,destination=/usr/share/nginx/html \
+     nginx:latest
+
+     * --name my-nginx: 서비스의 이름을 my-nginx로 지정합니다.
+     * --publish published=8080,target=80: 클러스터의 어떤 노드든 8080 포트로 들어오는 요청을
+       Nginx 컨테이너의 80 포트로 전달합니다.
+     * --replicas 3: 3개의 복제본을 실행하여 각 노드에 하나씩 컨테이너가 배포되도록 합니다.
+     * --mount ...: 가장 중요한 부분입니다. 각 노드의 로컬 경로인 /mnt/nfs/html(NFS 공유
+       폴더)를 컨테이너 내부의 /usr/share/nginx/html(Nginx 기본 웹 루트) 경로로 연결(바인드
+       마운트)합니다.
+
+ 2. 서비스 배포 상태 확인
+
+   docker service ls
+   docker service ps my-nginx
+
+    docker service ps 명령을 실행했을 때, my-nginx 서비스의 복제본 3개가 각 노드(server-a, server-b, server-c)에서 Running 상태로 표시되면 성공적으로 배포된 것입니다.
+
+
+7단계: 최종 확인
+
+이제 모든 설정이 완료되었습니다. 웹 브라우저를 열고 클러스터 노드의 IP 주소와 8080 포트로
+접속해 보세요.
+
+ * http://192.168.0.10:8080
+ * http://192.168.0.11:8080
+ * http://192.168.0.12:8080
+
+어떤 노드의 IP로 접속하든 "Hello from NFS Server!"라는 메시지가 보이면 성공입니다. 이는
+Docker Swarm의 라우팅 메시(Routing Mesh) 기능과 NFS 공유 스토리지가 올바르게 작동하고 있다는
+증거입니다.
+
+추가 테스트:
+server-a에서 index.html 파일의 내용을 수정해 보세요.
+
+ echo "<h1>NFS Content Updated~~~</h1>" | sudo tee /mnt/nfs/html/index.html
+
+그리고 다시 웹 브라우저를 새로고침하면, 어떤 IP로 접속하든 변경된 내용이 즉시 반영되는 것을
+확인할 수 있습니다.
+
+
+8. 레플리카 변경 명령어
+
+먼저 마스터 노드(server-a)에서 서비스의 복제본 수를 조정하는 docker service scale 명령을
+실행합니다.
+
+ docker service scale my-nginx=4
+
+또는 docker service update 명령을 사용할 수도 있습니다.
+
+ docker service update --replicas 4 my-nginx
+
+9. 새로운 노드 추가 
+ 새로운 노드(server-d라고 가정)를 추가하는 작업은 기존 인프라와 동일한 환경을 구성한 뒤,
+Swarm 클러스터에 합류시키는 과정으로 이루어집니다.
+
+가장 중요한 점은 새 노드 역시 중앙 NFS 서버의 공유 폴더에 접근할 수 있어야 한다는 것입니다.
+이 전제 조건만 충족되면, Docker Swarm이 나머지 작업을 대부분 자동으로 처리해 줍니다.
+
+전체 과정은 다음과 같습니다.
+
+1단계: 새 노드 준비 (server-d에서 실행)
+ * 서버 호스트명: server-d
+ * 역할: Docker Swarm 워커 + NFS 클라이언트
+ * IP 주소 (예시): 192.168.0.13
+
+사전 조건:
+ * Ubuntu 24.04 LTS 등 리눅스 OS 설치 완료
+ * 기존 클러스터 노드들(a, b, c) 및 NFS 서버(a)와 네트워크 통신이 가능해야 합니다.
+ * 방화벽이 있다면 Docker Swarm 통신에 필요한 포트(TCP 2377, TCP/UDP 7946, UDP 4789)가 열려 있어야 합니다.
+
+2단계: NFS 클라이언트 설정 (server-d에서 실행)
+
+server-b, server-c에서 했던 것과 완벽히 동일한 작업을 server-d에서도 수행하여 NFS 공유 폴더를 마운트합니다.
+
+ 1. NFS 클라이언트, vim 패키지 설치
+   sudo apt-get update
+   sudo apt-get install -y nfs-common vim
+
+ 2. 마운트할 로컬 디렉토리 생성
+   sudo mkdir -p /mnt/nfs/html
+
+ 3. NFS 공유 폴더 마운트 및 확인
+   sudo mount 192.168.0.10:/mnt/nfs/html /mnt/nfs/html
+   ls -l /mnt/nfs/html
+   
+   index.html 파일이 보이면 성공입니다.
+
+ 4. 부팅 시 자동 마운트 설정 (`/etc/fstab`)
+    sudo vi /etc/fstab 명령으로 파일을 열고 맨 아래에 다음 줄을 추가합니다.
+   192.168.0.10:/mnt/nfs/html    /mnt/nfs/html   nfs auto,nofail,noatime,nolock,intr,tcp,actimeo=1800 0 0
+
+ 5. 설정 최종 적용
+    sudo umount /mnt/nfs/html
+    sudo mount -a
+    df -h
+   
+    df -h 결과에 마운트 정보가 보이면 완료입니다.
+
+3단계: Docker 설치 (server-d에서 실행)
+
+다른 노드들과 마찬가지로 server-d에도 Docker를 설치합니다.
+
+ 1. Docker 공식 설치 스크립트 실행
+    curl -fsSL https://get.docker.com -o get-docker.sh
+    sudo sh get-docker.sh
+
+ 2. `sudo` 없이 `docker` 명령어 사용하기
+   sudo usermod -aG docker $USER
+ 
+ 터미널을 닫고 다시 접속하거나 newgrp docker를 실행해야 적용됩니다.
+
+4단계: Swarm 클러스터에 새 노드 추가
+
+이제 server-d를 워커 노드로 클러스터에 합류시킵니다.
+
+ 1. Join 토큰 확인 (`server-a` 마스터 노드에서 실행)
+    클러스터에 참여할 때 필요한 토큰이 기억나지 않는 경우, 마스터 노드에서 아래 명령어를 실행하여 워커용 토큰을 다시 확인할 수 있습니다.
+    docker swarm join-token worker
+
+ 클러스터에 참여 (`server-d`에서 실행)
+    위에서 출력된 docker swarm join ... 명령어를 그대로 복사하여 server-d의 터미널에 붙여넣고 실행합니다.
+    docker swarm join --token SWMTKN-1-abc...xyz 192.168.0.10:2377
+    "This node joined a swarm as a worker." 메시지가 출력되면 성공입니다.
+
+5단계: 최종 확인 및 Swarm의 자동 조정 관찰
+
+새 노드가 추가된 후 Docker Swarm이 어떻게 반응하는지 확인합니다.
+
+ 1. 노드 목록 확인 (`server-a` 마스터 노드에서 실행)
+  docker node ls
+
+    server-d가 목록에 Ready 상태로 추가된 것을 볼 수 있습니다.
+
+ 2. 서비스 상태 확인 (`server-a` 마스터 노드에서 실행)
+    이제 가장 흥미로운 부분입니다. my-nginx 서비스의 상태를 다시 확인해 보세요.
+ 1     docker service ps my-nginx
+    어떤 일이 일어날까요?
+
+    Docker Swarm은 항상 "원하는 상태"를 유지하려고 합니다. 
+    현재 my-nginx 서비스의 "원하는 상태"는 4개의 복제본을 최대한 여러 노드에 분산하여 실행하는 것입니다.
+
+     * 이전 상태: 4개의 컨테이너가 3개의 노드에 분산 (예: server-a에 1개, server-b에 2개,
+       server-c에 1개)
+     * 새로운 상황: 비어있는 server-d가 클러스터에 추가됨.
+
+    Swarm 매니저는 이 상황을 인지하고, 더 균등한 분배를 위해 자동으로 서비스를 재조정합니다.
+즉, 2개의 컨테이너가 실행 중이던 노드(예: server-b)에서 컨테이너 하나를 종료(Shutdown)하고,
+새로운 노드인 server-d에 컨테이너를 생성(Running)하여 1-1-1-1 분포를 맞춥니다.
+
+    위와 같이, 기존 노드에서 실행되던 태스크 하나가 Shutdown되고, 새로운 server-d에 새
+태스크가 Running 상태가 된 것을 확인할 수 있습니다.
+

@@ -1,0 +1,9 @@
+FROM ubuntu:24.04
+
+#환경변수 my_env선언 값으로 "my_value" 설정함 
+ENV my_env=my_value
+
+#${my_env:-value} : my_env 변수에 값이 없거나 null이면 value 출력 
+#${my_env:+value} : my_env 변수에 값이 있으면 value 출력 
+RUN echo ${my_env:-value} / ${my_env:+value}
+

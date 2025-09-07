@@ -1,0 +1,39 @@
+# 이 YAML 파일은 minReadySeconds 속성을 사용하는 디플로이먼트와 서비스를 정의합니다.
+# Reference : https://github.com/kubernetes/kubernetes/issues/51671
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: minreadyseconds-v1
+spec:
+  replicas: 1
+  # minReadySeconds는 새로 생성된 파드가 아무런 문제 없이 Ready 상태를 유지해야 하는 최소 시간(초)을 설정합니다.
+  # 이 시간 동안 파드는 사용 가능한(Available) 상태로 간주되지 않습니다.
+  # 여기서는 30초로 설정되어, 파드가 30초 동안 안정적으로 실행되어야 다음 업데이트가 진행됩니다.
+  minReadySeconds: 30
+  selector:
+    matchLabels:
+      app: minready-test
+  template:
+    metadata:
+      labels:
+        app: minready-test
+    spec:
+      containers:
+      - name: minreadyseconds-v1
+        image: masungil/echo-hostname:1.0
+        imagePullPolicy: Always  # <-- 이미지 항상 docker hub에서 가져오기
+        ports:
+        - containerPort: 8000
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: myservice
+spec:
+  ports:
+  - name: web-port
+    port: 8000
+    targetPort: 8000
+  selector:
+    app: minready-test
+  type: NodePort

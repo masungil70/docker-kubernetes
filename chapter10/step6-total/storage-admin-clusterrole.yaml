@@ -1,0 +1,21 @@
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  # ClusterRole에는 namespace 필드가 없습니다.
+  name: storage-admin
+  namespace: development
+rules:
+# 규칙 1: PersistentVolume(클러스터 리소스)에 대한 모든 권한 부여
+- apiGroups: [""]
+  resources: ["persistentvolumes"]
+  verbs: ["get", "list", "watch", "create", "delete", "update", "patch"]
+
+# 규칙 2: StorageClass(클러스터 리소스)에 대한 읽기 권한 부여
+- apiGroups: ["storage.k8s.io"]
+  resources: ["storageclasses"]
+  verbs: ["get", "list", "watch"]
+
+# 규칙 3: 모든 네임스페이스의 PersistentVolumeClaim(네임스페이스 리소스)에 대한 읽기 권한 부여
+- apiGroups: [""]
+  resources: ["persistentvolumeclaims"]
+  verbs: ["get", "list", "watch"]

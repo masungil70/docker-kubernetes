@@ -1,0 +1,262 @@
+ Docker Swarm에서 글로벌 서비스(Global Service)는 클러스터 내의 모든 적격한(eligible) 워커 노드에
+  정확히 하나의 태스크(컨테이너)를 배포하도록 설계된 서비스 유형입니다. 이는 이전에 설명한 복제
+  서비스(Replicated Service)와는 대조적입니다.
+
+   * 복제 서비스(Replicated Service): 사용자가 지정한 수(예: 3개)의 복제본(컨테이너)을 클러스터 내에
+     분산하여 실행합니다. Swarm 매니저는 이 복제본 수를 유지하기 위해 노력합니다.
+   * 글로벌 서비스(Global Service): 클러스터에 노드가 추가되면 해당 노드에 자동으로 서비스의 태스크가
+     배포되고, 노드가 제거되면 해당 노드의 태스크도 제거됩니다. 즉, 클러스터 내의 모든 노드에 항상
+     하나의 인스턴스가 실행됩니다.
+
+  주요 특징 및 개념
+
+   1. 모든 적격 노드에 배포:
+       * 글로벌 서비스는 클러스터에 참여하는 모든 워커 노드(매니저 노드도 워커 역할을 할 수 있음)에
+         배포됩니다.
+       * 새로운 노드가 Swarm에 합류하면, 해당 노드에 자동으로 글로벌 서비스의 컨테이너가 배포됩니다.
+       * 노드가 Swarm에서 제거되거나 drain 상태로 전환되면, 해당 노드의 컨테이너는 중지됩니다.
+
+   2. 확장성 개념의 차이:
+       * 복제 서비스는 docker service scale 명령어로 복제본 수를 명시적으로 조절하여 확장합니다.
+       * 글로벌 서비스는 클러스터에 노드를 추가하거나 제거함으로써 확장(스케일 아웃/인)됩니다. 서비스
+         자체의 복제본 수를 직접 지정할 필요가 없습니다. 복제본 수는 항상 클러스터 내의 적격 노드 수와
+         동일합니다.
+
+   3. 원하는 상태 유지 (Desired State Reconciliation):
+       * Swarm 매니저는 각 노드에 글로벌 서비스의 인스턴스가 하나씩 실행되고 있는지 지속적으로
+         모니터링합니다.
+       * 만약 어떤 노드에서 글로벌 서비스 컨테이너가 예기치 않게 종료되면, Swarm은 해당 노드에 새로운
+         컨테이너를 자동으로 다시 시작하여 원하는 상태를 복구합니다.
+
+   4. 특정 노드에만 배포 (제약 조건):
+       * --constraint 옵션을 사용하여 특정 레이블을 가진 노드에만 글로벌 서비스를 배포하도록 제한할 수
+         있습니다. 예를 들어, node.labels.type==monitoring 레이블이 있는 노드에만 모니터링 에이전트를
+         배포할 수 있습니다.
+
+  글로벌 서비스의 일반적인 사용 사례
+
+  글로벌 서비스는 다음과 같은 유형의 애플리케이션에 매우 적합합니다.
+
+   * 모니터링 및 로깅 에이전트: Prometheus Node Exporter, Fluentd, ELK Stack의 Filebeat/Metricbeat 등
+     각 서버의 지표나 로그를 수집하는 에이전트.
+   * 보안 에이전트: 각 서버의 보안 이벤트를 감지하고 보고하는 에이전트.
+   * 네트워크 오버레이 에이전트: 클러스터 전체의 네트워킹 기능을 제공하는 에이전트.
+   * DNS 서버: 클러스터 내부 DNS 쿼리를 처리하는 에이전트.
+   * 프록시/캐싱 서비스: 각 노드에서 로컬 캐싱 또는 프록시 기능을 제공하는 서비스.
+   * 데몬셋(DaemonSet)과 유사: Kubernetes의 DaemonSet과 유사한 개념으로, 클러스터의 모든 노드에서 특정
+     백그라운드 작업을 수행해야 할 때 사용됩니다.
+
+  1. 글로벌 서비스 예제 (모든 노드에 Nginx 배포)
+
+    이 예제에서는 클러스터의 모든 노드에 Nginx 웹서버를 글로벌 서비스로 배포하고, 각 노드의 8080 포트를 통해 접근할 수 있도록 합니다.
+
+    1. 글로벌 서비스 생성
+
+    my-global-nginx라는 이름의 Nginx 글로벌 서비스를 생성합니다. --mode global 옵션이 핵심입니다.
+
+     docker service create \
+       --name my-global-nginx \
+       --mode global \
+       --publish published=8080,target=80 \
+       nginx:latest
+
+     * --name my-global-nginx: 서비스의 이름을 지정합니다.
+     * --mode global: 이 서비스가 글로벌 서비스임을 명시합니다.
+     * --publish published=8080,target=80: 클러스터의 모든 노드에서 8080 포트로 들어오는 요청을 해당
+       노드에서 실행 중인 Nginx 컨테이너의 80 포트로 전달합니다.
+     * nginx:latest: 사용할 도커 이미지입니다.
+
+    2. 서비스 상태 확인
+
+    현재 Swarm에서 실행 중인 모든 서비스 목록을 확인합니다.
+
+     docker service ls
+    출력 예시:
+
+     ID             NAME              MODE     REPLICAS   IMAGE          PORTS
+     u29tq453g1r9   my-global-nginx   global   3/3        nginx:latest   *:8080->80/tcp
+    
+    MODE가 global로 표시되고, REPLICAS가 3/3으로 표시됩니다. 여기서 3/3은 클러스터 내의 적격 노드
+    수(3개) 중 3개 모두에 컨테이너가 실행 중이라는 의미입니다. (만약 노드가 1개라면 1/1로 표시됩니다.)
+
+    3. 서비스의 상세 정보 (컨테이너 목록) 확인
+
+    my-global-nginx 서비스를 구성하는 개별 컨테이너(Task)들이 어느 노드에서 실행 중인지 확인합니다.
+
+    docker service ps my-global-nginx
+    출력 예시 (클러스터에 manager1, worker1, worker2 노드가 있다고 가정):
+
+    ID             NAME                                        IMAGE          NODE      DESIRED STATE   CURRENT STATE            ERROR     PORTS
+    jhjtdp52nbef   my-global-nginx.kqhkoni5je707flvar92wt76j   nginx:latest   node1     Running         Running 43 seconds ago
+    738eem1gxvv1   my-global-nginx.o24mpmioqgc4mug9risaypafe   nginx:latest   node2     Running         Running 44 seconds ago
+    utsr8dkjxmzo   my-global-nginx.qisbqmbzb44gbh076cejhiddj   nginx:latest   manager   Running         Running 45 seconds ago
+
+    보시다시피, 클러스터의 모든 노드(manager1, node1, node2)에 my-global-nginx 서비스의 컨테이너가
+    하나씩 배포되어 실행 중인 것을 확인할 수 있습니다.
+
+    4. 각 노드에서 서비스 접속 테스트
+
+    이제 클러스터 내의 각 노드의 IP 주소를 사용하여 8080 포트로 접속해봅니다. 각 노드에서 Nginx 기본
+    페이지가 보이는지 확인합니다.
+
+     * Manager 노드에서 테스트:
+      curl localhost:8080
+        또는 Manager 노드의 실제 IP 주소로:
+
+      curl <Manager_Node_IP>:8080
+
+     * Worker 노드에서 테스트 (해당 노드에 SSH 접속 후):
+     1     curl localhost:8080
+        또는 Worker 노드의 실제 IP 주소로:
+
+     1     curl <Worker_Node_IP>:8080
+
+    모든 노드에서 "Welcome to nginx!" 메시지가 보이면 성공입니다. 이는 각 노드에 Nginx 컨테이너가
+    독립적으로 실행되고 있음을 의미합니다.
+
+    5. 새로운 노드 추가 시 동작 확인 (선택 사항)
+
+    만약 새로운 워커 노드를 Swarm 클러스터에 추가한다면, 해당 노드에도 my-global-nginx 컨테이너가
+    자동으로 배포되는 것을 확인할 수 있습니다.
+
+     1. 새로운 머신에서 Swarm에 조인합니다:
+        docker swarm join --token <YOUR_WORKER_TOKEN> <MANAGER_IP>:2377
+        
+     2. 다시 docker service ps my-global-nginx를 실행하면, 새로 추가된 노드에도 컨테이너가 배포된 것을 볼 수 있습니다.
+
+    6. 서비스 제거
+
+    더 이상 필요 없는 글로벌 서비스를 제거합니다. 이 명령어를 실행하면 Swarm은 해당 서비스의 정의를
+    삭제하고 관련된 모든 노드의 컨테이너를 중지 및 제거합니다.
+
+     docker service rm my-global-nginx
+
+  2. Docker Swarm에서 노드 라벨을 설정하여 특정 노드만 글로벌 서비스를 실행
+  
+    Docker Swarm에서 노드 라벨을 설정하고, 설정된 라벨을 가진 노드에서만 글로벌 서비스를 실행하는 예제 확인 
+
+    이 예제에서는 my-fastapi-whoami 이미지를 사용하여, 특정 노드에 env=production이라는 라벨을 붙이고,
+    이 라벨이 있는 노드에만 서비스가 배포되도록 할 것입니다.
+
+    1. 현재 Swarm 노드 확인 및 라벨 추가
+
+    먼저 Swarm 클러스터의 노드 목록을 확인하고, 특정 노드에 라벨을 추가합니다.
+
+    1.1. Swarm 노드 목록 확인:
+    클러스터의 노드 ID와 이름을 확인합니다. 여기서 라벨을 추가할 노드를 선택합니다.
+
+     docker node ls
+    출력 예시:
+      ID                            HOSTNAME   STATUS    AVAILABILITY   MANAGER STATUS   ENGINE VERSION
+      qisbqmbzb44gbh076cejhiddj *   manager    Ready     Active         Leader           28.3.3
+      kqhkoni5je707flvar92wt76j     node1      Ready     Active         Reachable        28.3.3
+      o24mpmioqgc4mug9risaypafe     node2      Ready     Active         Reachable        28.3.3
+
+    여기서는 node1 노드에 라벨을 추가한다고 가정하겠습니다. node1의 ID를 복사해둡니다.
+
+    1.2. 노드에 라벨 추가:
+    선택한 노드(예: node1)에 env=production 라벨을 추가합니다.
+
+     docker node update --label-add env=production node1
+     * node1 대신 실제 노드의 HOSTNAME 또는 ID를 사용하세요.
+
+    1.3. 라벨이 잘 추가되었는지 확인:
+    노드의 상세 정보를 확인하여 라벨이 추가되었는지 검증합니다.
+
+     docker node inspect node1 --format '{{ .Spec.Labels }}'
+    출력 예시:
+     map[env:production]
+    env:production이 보이면 성공입니다.
+
+
+    2. 라벨 제약 조건을 가진 글로벌 서비스 생성
+
+    이제 env=production 라벨이 있는 노드에만 배포될 my-fastapi-whoami 글로벌 서비스를 생성합니다.
+
+     docker service create \
+       --name production-whoami \
+       --mode global \
+       --constraint 'node.labels.env == production' \
+       --publish published=8081,target=8000 \
+       my-fastapi-whoami:latest
+
+     * --name production-whoami: 서비스 이름을 production-whoami로 지정합니다.
+     * --mode global: 이 서비스가 글로벌 서비스임을 명시합니다.
+     * --constraint 'node.labels.env == production': 이 부분이 핵심입니다. node.labels.env가
+       production과 정확히 일치하는 노드에만 서비스를 배포하도록 제약 조건을 설정합니다.
+     * --publish published=8081,target=8000: 클러스터의 8081 포트를 컨테이너의 8000 포트에
+       매핑합니다. (이전 예제와 포트 충돌을 피하기 위해 8081 사용)
+     * my-fastapi-whoami: 사용할 이미지입니다. (이전 단계에서 빌드한 이미지)
+
+     위 구문이 실행되지 않을 때는 my-fastapi-whoami 이미지를 본인의 docker.hub 저장소 push 하고 
+     계정이름/my-fastapi-whoami 으로 수정하여 실행한다 
+     
+      docker image tag my-fastapi-whoami:latest  masungil/my-fastapi-whoami:latest
+      docker push masungil/my-fastapi-whoami:latest
+       
+      docker service create \
+       --name production-whoami \
+       --mode global \
+       --constraint 'node.labels.env == production' \
+       --publish published=8081,target=8000 \
+       masungil/my-fastapi-whoami:latest
+
+     
+    3. 서비스 배포 확인
+
+    서비스가 의도한 대로 라벨이 있는 노드에만 배포되었는지 확인합니다.
+
+     docker service ps production-whoami
+    출력 예시 (manager1, node1 노드가 있고 node1에만 라벨이 있는 경우):
+
+     1 ID             NAME                    IMAGE                NODE      DESIRED STATE
+       CURRENT STATE           ERROR     PORTS
+     2 x1y2z3a4b5c6   production-whoami.node1   my-fastapi-whoami:latest   node1   Running
+       Running 5 seconds ago
+    위 출력에서 production-whoami 서비스의 컨테이너가 `node1` 노드에만 실행되고 있음을 확인할 수
+    있습니다. manager1 노드에는 배포되지 않았습니다. 이는 제약 조건이 성공적으로 적용되었음을
+    의미합니다.
+
+    참고: docker service ls 출력
+    docker service ls를 실행하면 REPLICAS가 1/1 또는 X/X 형태로 나타날 수 있습니다. 여기서 X는 제약
+    조건을 만족하는 노드의 수입니다. 만약 node1과 node2 모두에 env=production 라벨을 추가했다면,
+     REPLICAS는 2/2로 표시될 것입니다.
+
+     node1에 가서 컨테이너를 종료 하고 서비스 목록을 확인한다. 그럼 잠시 후 자동으로 node1에 컨테이너가 실행되어 올라오는 것을 확인 할 수 있다 
+
+     docker rm [컨테이너아이디]
+     docker ps -a
+     docker service ps production-whoami
+     docker ps -a
+     
+    ---
+
+    4. 서비스 접속 테스트 (선택 사항)
+
+    라벨이 있는 노드(예: worker1)의 IP 주소와 8081 포트를 사용하여 서비스에 접속해봅니다.
+
+     1 curl <worker1_IP_Address>:8081
+    node1에서 실행 중인 my-fastapi-whoami 컨테이너의 응답이 보일 것입니다.
+
+   
+    5. 정리 (Clean Up)
+
+    테스트가 완료되면 생성한 서비스와 노드 라벨을 제거하여 환경을 정리합니다.
+
+    5.1. 서비스 제거:
+
+     1 docker service rm production-whoami
+
+    5.2. 노드 라벨 제거:
+    노드에 추가했던 라벨을 제거합니다.
+
+     1 docker node update --label-rm env node1
+     * node1 대신 실제 노드의 HOSTNAME 또는 ID를 사용하세요.
+
+    5.3. 라벨 제거 확인:
+     1 docker node inspect node1 --format '{{ .Spec.Labels }}'
+    출력 예시:
+     1 map[]
+    map[]이 보이면 라벨이 성공적으로 제거된 것입니다.
+
+   

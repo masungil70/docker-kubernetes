@@ -1,0 +1,27 @@
+# my-app-deployment.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: my-app-deployment
+spec:
+  replicas: 1 # 초기 파드 수
+  selector:
+    matchLabels:
+      app: my-app
+  template:
+    metadata:
+      labels:
+        app: my-app
+    spec:
+      containers:
+      - name: my-app-container
+        image: nginx:latest # 예시 이미지
+        ports:
+        - containerPort: 80
+        resources:
+          requests: # HPA가 CPU 사용률을 계산하기 위해 반드시 필요
+            cpu: "100m" # 0.1 CPU core
+            memory: "128Mi"
+          limits:
+            cpu: "200m"
+            memory: "256Mi"

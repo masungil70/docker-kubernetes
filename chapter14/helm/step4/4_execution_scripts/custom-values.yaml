@@ -1,0 +1,42 @@
+# 이 파일은 Alertmanager 설정을 위한 샘플입니다.
+# 이 파일의 내용을 복사하여 kube-prometheus-stack 설치 시 사용한
+# custom-values.yaml 파일에 병합하거나, 이 파일을 직접 수정하여 사용하세요.
+
+alertmanager:
+  config:
+    global:
+      resolve_timeout: 5m
+
+    route:
+      group_by: ['job']
+      group_wait: 30s
+      group_interval: 5m
+      repeat_interval: 12h
+      # 기본 리시버를 'email-notifications'으로 변경
+      receiver: 'email-notifications' 
+      routes:
+      # severity=warning 레이블을 가진 알림은 email-notifications 리시버로 보냅니다.
+      - match:
+          severity: warning
+        receiver: 'email-notifications'
+
+    receivers:
+    # --- 이메일 설정 --- 
+    # 중요! 아래의 모든 placeholder 값 (your-email@..., smtp..., your-app-password)을 
+    # 자신의 실제 이메일/SMTP 정보로 수정해야 합니다.
+    - name: 'email-notifications'
+      email_configs:
+      - to: 'masungil70@gmail.com' # 알림을 받을 목적지 이메일 주소
+        from: 'masungil70@gmail.com' # 보내는 사람으로 표시될 이메일 주소
+        # SMTP 서버 설정 (예: Gmail, 사내 메일 서버 등)
+        smarthost: 'smtp.gmail.com:587'
+        auth_username: 'masungil70@gmail.com' # SMTP 로그인 계정
+        auth_identity: 'masungil70@gmail.com' # 보통 auth_username과 동일
+        # SMTP 비밀번호. Gmail의 경우, 일반 비밀번호가 아닌 '앱 비밀번호'를 생성하여 사용해야 합니다.
+        auth_password: 'qlpxgprkjwjrgayi' 
+        send_resolved: true
+        headers:
+          subject: '[{{ .Status | toUpper }}] {{ .CommonLabels.alertname }} for {{ .CommonLabels.job }}'
+        html: '{{ template "email.default.html" . }}'
+
+

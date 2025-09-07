@@ -1,0 +1,21 @@
+#version: '3.8'
+
+services:
+  web:
+    build: .
+    image: my-fastapi-app:1.0
+    ports:
+      - "8000"
+    environment:
+      - APP_VERSION=v1.0
+    deploy:
+      replicas: 3
+      update_config:
+        parallelism: 1
+        delay: 10s
+        order: start-first
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/healthz"]
+      interval: 10s
+      timeout: 5s
+      retries: 3

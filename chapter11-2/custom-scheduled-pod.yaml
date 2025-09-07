@@ -1,0 +1,14 @@
+# 이 YAML 파일은 사용자 정의 스케줄러를 사용해 포드를 스케줄링하는 예제입니다.
+# 'schedulerName' 필드를 사용해 기본 스케줄러가 아닌 다른 스케줄러를 지정할 수 있습니다.
+apiVersion: v1
+kind: Pod
+metadata:
+  name: custom-scheduled-pod
+spec:
+  # 'schedulerName'은 이 포드를 스케줄링할 스케줄러의 이름을 지정합니다.
+  # 기본값은 'default-scheduler'입니다.
+  # 여기서는 'my-custom-scheduler'라는 이름의 사용자 정의 스케줄러를 사용하도록 설정했습니다.
+  schedulerName: my-custom-scheduler
+  containers:
+  - name: nginx-container
+    image: nginx

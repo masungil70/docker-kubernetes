@@ -1,0 +1,8 @@
+# 1. 베이스 이미지 지정 공식 Nginx 이미지를 베이스로 사용합니다.
+# --cache-from nginx 옵션은 바로 이 FROM 명령어에서 캐시를 찾으려고 시도합니다.
+FROM nginx:latest
+
+# 2. 새로운 레이어 추가 우리만의 커스텀 파일을 Nginx의 기본 웹 루트 디렉토리에 복사합니다.
+# 이 COPY 명령어는 베이스 이미지 위에 새로운 레이어를 생성합니다.
+COPY index.html /usr/share/nginx/html/index.html
+

@@ -1,0 +1,26 @@
+version: '3.8'
+
+services:
+  backend:
+    build: ./backend
+    ports:
+      - "8000:8000"
+    # environment 키를 사용하여 컨테이너에 환경 변수를 직접 주입합니다.
+    # 보안에 취약하므로 프로덕션 환경에서는 절대 사용하지 마세요.
+    environment:
+      - DB_HOST=db
+      - DB_NAME=kosa_db
+      - DB_USER=kosa
+      - DB_PASSWORD=1004
+    depends_on:
+      - db
+
+  db:
+    image: mariadb:10.5
+    restart: always
+    # MariaDB 컨테이너를 초기화하기 위한 환경 변수들입니다.
+    environment:
+      - MYSQL_ROOT_PASSWORD=1004
+      - MYSQL_DATABASE=kosa_db
+      - MYSQL_USER=kosa
+      - MYSQL_PASSWORD=1004

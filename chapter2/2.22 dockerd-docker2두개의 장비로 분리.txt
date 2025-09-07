@@ -1,0 +1,150 @@
+전체적인 구조
+
+   1. 서버 a (Docker Host): Docker 데몬(dockerd)이 설치되고 실행됩니다. 실제 컨테이너는 이
+      서버에서 생성되고 관리됩니다.
+   2. 서버 b (Client): Docker CLI만 설치됩니다. 사용자는 이 서버에 접속하여 Docker 명령을
+      실행합니다. 이 명령은 SSH 터널을 통해 안전하게 서버 a로 전달됩니다.
+
+  1단계: 서버 a (Docker Host) 설정
+
+  서버 a에서는 Docker 엔진을 설치하고 실행합니다.
+
+  1.1. Docker 설치
+
+  최신 버전의 Docker를 설치하기 위해 Docker의 공식 리포지토리를 사용합니다.
+
+    # 1. apt 패키지 인덱스를 업데이트하고, 필수 패키지를 설치합니다.
+    sudo apt-get update
+    sudo apt-get install -y ca-certificates curl gnupg
+   
+    # 2. Docker의 공식 GPG 키를 추가합니다.
+    sudo install -m 0755 -d /etc/apt/keyrings
+    curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo gpg --dearmor -o /etc/apt/keyrings/docker.gpg
+    sudo chmod a+r /etc/apt/keyrings/docker.gpg
+   
+    # 3. Docker 리포지토리를 설정합니다.
+    echo \
+      "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/ubuntu \
+      $(. /etc/os-release && echo "$VERSION_CODENAME") stable" | \
+      sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
+   
+    # 4. apt 패키지 인덱스를 다시 업데이트하고 Docker Engine을 설치합니다.
+    sudo apt-get update
+    sudo apt-get install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
+
+  1.2. Docker 설치 확인
+
+  설치가 잘 되었는지 테스트 컨테이너를 실행하여 확인합니다.
+
+   sudo docker run hello-world
+
+  "Hello from Docker!" 메시지가 보이면 성공입니다.
+
+  1.3. (선택사항) sudo 없이 Docker 사용하기
+
+  매번 sudo를 입력하는 것이 번거롭다면, 현재 사용자를 docker 그룹에 추가하세요.
+
+   sudo usermod -aG docker $USER
+
+  이 명령 실행 후, 터미널을 종료하고 다시 접속해야 적용됩니다
+  
+  1.4 서버의 IP 확인 한다 
+  ip addr 
+
+  중요: SSH 터널링 방식을 사용할 것이므로, 외부에서 Docker 데몬에 접근하도록 설정 파일을
+  수정할 필요가 없습니다. /etc/docker/daemon.json 파일을 건드리지 마세요. 이것이 더
+  안전한 방법입니다.
+
+  ---
+
+  2단계: 서버 b (Client) 설정
+
+  서버 b에는 전체 Docker 엔진이 아닌, 원격으로 명령을 보낼 CLI만 설치하면 됩니다.
+
+  2.1. Docker CLI 설치
+
+  서버 a에서 했던 과정과 유사하지만, docker-ce 대신 docker-ce-cli만 설치합니다.
+
+    # 1. apt 패키지 인덱스를 업데이트하고, 필수 패키지를 설치합니다.
+    sudo apt-get update
+    sudo apt-get install -y ca-certificates curl gnupg
+   
+    # 2. Docker의 공식 GPG 키를 추가합니다.
+    sudo install -m 0755 -d /etc/apt/keyrings
+    curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo gpg --dearmor -o /etc/apt/keyrings/docker.gpg
+    sudo chmod a+r /etc/apt/keyrings/docker.gpg
+   
+    # 3. Docker 리포지토리를 설정합니다.
+    echo \
+      "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/ubuntu \
+      $(. /etc/os-release && echo "$VERSION_CODENAME") stable" | \
+      sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
+   
+    # 4. apt 패키지 인덱스를 다시 업데이트하고 Docker CLI만 설치합니다.
+    sudo apt-get update
+    sudo apt-get install -y docker-ce-cli
+
+  2.2. 서버 a로 암호 없이 SSH 접속 설정
+  매번 SSH 터널을 만들 때마다 암호를 입력하지 않도록 SSH 키를 설정합니다.
+    ssh-keygen -t rsa -b 4096
+      (모든 질문에 그냥 Enter를 누르면 기본값으로 생성됩니다.)
+
+    서버 b에서 생성된 공개 키를 서버 a로 복사:
+    ssh-copy-id kosa@server_a_ip
+
+   3. 서버 b에서 암호 없이 SSH 접속이 잘 되는지 확인:
+    ssh kosa@server_a_ip
+      암호를 묻지 않고 바로 접속되면 성공입니다.
+
+  3단계: SSH 터널링을 통해 Docker 명령어 실행
+
+  이제 모든 준비가 끝났습니다. 서버 b에서 서버 a로 SSH 터널을 만들고 Docker 명령을
+  실행합니다.
+
+  3.1. SSH 터널 생성
+  서버 b의 터미널에서 다음 명령을 실행하여 SSH 터널을 백그라운드로 생성합니다.
+   # user@server_a_ip 부분은 서버 a의 실제 사용자명과 IP 주소로 변경하세요.
+   ssh -L 2375:/var/run/docker.sock user@server_a_ip -N -f
+
+   * -L 2375:/var/run/docker.sock: 서버 b의 로컬 포트 2375로 오는 모든 요청을 SSH 연결을
+     통해 서버 a의 /var/run/docker.sock 유닉스 소켓으로 전달하라는 의미입니다.
+   * -N: 원격지(서버 a)에서 셸 명령을 실행하지 말고 포트 포워딩만 유지하라는 의미입니다.
+   * -f: 명령을 백그라운드에서 실행합니다.
+
+  3.2. DOCKER_HOST 환경 변수 설정
+  서버 b에서 Docker CLI가 서버 a를 바라보도록 환경 변수를 설정합니다.
+
+    export DOCKER_HOST=tcp://localhost:2375
+
+  3.3. 테스트
+  이제 서버 b에서 Docker 명령을 실행해 보세요.
+
+   1 docker ps
+   2 docker images
+   3 docker info
+
+  이 명령의 결과는 서버 a의 Docker 데몬 정보와 컨테이너/이미지 목록을 보여줄 것입니다.
+  예를 들어, 서버 b에서 docker run -d -p 8080:80 nginx를 실행하면, 실제 nginx 컨테이너는
+  서버 a에서 생성되고 실행됩니다.
+
+  3.4. (선택사항) 환경 변수 영구 설정
+
+  매번 터미널을 열 때마다 export DOCKER_HOST...를 입력하는 것이 불편하다면, 셸 설정
+  파일에 추가하세요.
+
+   # .bashrc 파일에 환경 변수 설정을 추가합니다.
+   echo "export DOCKER_HOST=tcp://localhost:2375" >> ~/.bashrc
+   
+   # 변경사항을 즉시 적용합니다.
+   source ~/.bashrc
+
+  이제 서버 b에 로그인하면 자동으로 DOCKER_HOST가 설정되어 바로 docker 명령을 사용할 수
+  있습니다. (단, SSH 터널은 항상 먼저 실행되어 있어야 합니다.)
+
+  요약
+
+  이 구성을 통해 서버 b의 사용자는 마치 로컬에서 작업하는 것처럼 Docker 명령을 내릴 수
+  있지만, 모든 실제 작업은 SSH로 안전하게 암호화되어 서버 a에서 처리됩니다. 이는 Docker
+  데몬을 네트워크에 직접 노출하는 것보다 훨씬 안전하고 권장되는 방식입니다.
+  
+  

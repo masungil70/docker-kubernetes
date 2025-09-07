@@ -1,0 +1,16 @@
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: cluster-info-viewer
+  namespace: development
+rules:
+- nonResourceURLs:
+  - "/healthz"
+  - "/livez"
+  - "/readyz"
+  - "/version"
+  verbs:
+  - get
+- apiGroups: [""] # Core API 그룹
+  resources: ["services", "endpoints"] # development 네임스페이스의 service와 endpoint
+  verbs: ["get", "list"]

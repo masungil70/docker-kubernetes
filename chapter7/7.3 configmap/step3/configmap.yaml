@@ -1,0 +1,7 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: my-app-config
+data:
+  GREETING: "안녕하세요~~~~" # 변경
+  MESSAGE: "쿠버네티스~~~~" # 변경

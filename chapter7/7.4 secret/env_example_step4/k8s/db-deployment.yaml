@@ -1,0 +1,45 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: db
+  labels:
+    app: db
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: db
+  template:
+    metadata:
+      labels:
+        app: db
+    spec:
+      automountServiceAccountToken: false
+      containers:
+      - name: mariadb
+        image: mariadb:10.5
+        ports:
+        - containerPort: 3306
+        env:
+        - name: MYSQL_DATABASE
+          valueFrom:
+            configMapKeyRef:
+              name: db-config
+              key: DB_NAME
+        - name: MYSQL_USER
+          valueFrom:
+            configMapKeyRef:
+              name: db-config
+              key: DB_USER
+        - name: MYSQL_ROOT_PASSWORD_FILE
+          value: /run/secrets/db-root-password
+        - name: MYSQL_PASSWORD_FILE
+          value: /run/secrets/db-password
+        volumeMounts:
+        - name: db-secret-volume
+          mountPath: /run/secrets
+          readOnly: true
+      volumes:
+      - name: db-secret-volume
+        secret:
+          secretName: db-secret

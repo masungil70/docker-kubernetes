@@ -1,0 +1,6 @@
+{
+  "app_name": "My Awesome Whoami App",
+  "environment": "production",
+  "log_level": "INFO",
+  "max_connections": 100
+}

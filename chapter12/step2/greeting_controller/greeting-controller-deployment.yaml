@@ -1,0 +1,21 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: greeting-controller
+  namespace: default
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: greeting-controller
+  template:
+    metadata:
+      labels:
+        app: greeting-controller
+    spec:
+      serviceAccountName: greeting-controller-sa # 이전 RBAC 설정에서 정의된 ServiceAccount
+      containers:
+      - name: controller
+        image: masungil/greeting-controller:latest # 빌드할 이미지 이름
+        ports:
+        - containerPort: 8080 # kopf가 사용하는 기본 포트 (필요시 노출)

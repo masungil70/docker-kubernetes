@@ -1,0 +1,40 @@
+# ---  문서 시작 ---
+# 직원 프로필 (맵)
+employee_profile:
+  # 스칼라 값들
+  name: "김민준"
+  employee_id: 102
+  is_manager: false
+  department: null # 아직 부서 배정 안됨 (null)
+  salary: 60000.50 # 실수
+
+  # 리스트
+  roles:
+    - "Software Engineer"
+    - "Backend Developer"
+
+  # 객체를 포함하는 리스트
+  projects:
+    - name: "Project Alpha"
+      status: "In Progress"
+    - name: "Project Beta"
+      status: "Completed"
+
+  # 여러 줄 문자열
+  notes: |
+    - 입사일: 2023-01-10
+    - 정기 평가에서 높은 점수를 받음.
+    - 다음 분기 리더 후보.
+
+  # 연락처 정보 (중첩된 맵)
+  contact:
+    email: "minjun.kim@example.com"
+    phone:
+      type: "mobile"
+      number: "010-1234-5678"
+
+# 불리언 값의 다른 표현들
+settings:
+  auto_save: on
+  dark_mode: yes
+# --- 문서의 끝 ---

@@ -1,0 +1,30 @@
+# 이 YAML 파일은 초기화 컨테이너(Init Container)의 활용 사례를 보여줍니다.
+apiVersion: v1
+kind: Pod
+metadata:
+  name: init-container-usecase
+spec:
+  containers:
+  - name: nginx
+    image: nginx
+  # initContainers를 사용하여 특정 조건이 충족될 때까지 메인 컨테이너의 시작을 지연시킬 수 있습니다.
+  initContainers:
+  - name: wait-other-service
+    image: busybox
+
+    # * wget -S -O /dev/null http://myserver:8000:
+    #     * wget: 웹에서 파일을 가져오는 명령입니다.
+    #     * -S: 서버의 응답 헤더를 표준 에러(stderr)로 출력합니다.
+    #     * -O /dev/null: 응답 본문(HTML 등)을 /dev/null로 보내어 버립니다. 즉, 파일로
+    #       저장하지 않고 화면에도 출력하지 않습니다.
+    #     * http://myserver:8000: 확인할 대상 URL입니다. myserver는 서비스 이름, 8000은 포트입니다.
+    # * 2>&1: wget이 출력하는 표준 에러(stderr, 여기에 헤더가 포함됨)를 표준 출력(stdout)으로
+    #   리다이렉트합니다. 이렇게 해야 다음 파이프(|)로 연결된 grep 명령이 헤더 내용을 읽을 수 있습니다.
+    # * grep -q "200 OK":
+    #     * grep: 텍스트에서 패턴을 검색하는 명령입니다.
+    #     * -q: "quiet" 모드입니다. 매칭되는 라인을 출력하지 않고, 매칭되는 것이 있으면 종료
+    #       코드 0을, 없으면 1을 반환합니다.
+    #     * "200 OK": HTTP 응답 헤더에 포함된 성공 상태 코드 문자열입니다.
+    # * until ...; do ...; done;: grep 명령이 성공(종료 코드 0)을 반환할 때까지 루프를 반복합니다.
+
+    command:  ['sh', '-c', 'until wget -S -O /dev/null http://myservice:8000 2>&1 | grep -q "200 OK"; do echo "waiting for myservice:8000 to return 200 OK..."; sleep 1; done;']

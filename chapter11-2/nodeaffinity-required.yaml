@@ -1,0 +1,22 @@
+# 이 YAML 파일은 노드 어피니티(Node Affinity)의 '필수(required)' 규칙을 사용하는 예제입니다.
+# 'requiredDuringSchedulingIgnoredDuringExecution'은 스케줄링 시점에 조건을 반드시 만족하는 노드에만
+# 포드를 스케줄링하도록 강제합니다.
+apiVersion: v1
+kind: Pod
+metadata:
+  name: nginx-nodeaffinity-required
+spec:
+  affinity:
+    nodeAffinity:
+      requiredDuringSchedulingIgnoredDuringExecution:
+        nodeSelectorTerms:
+        - matchExpressions:
+          # 'mylabel/disk' 레이블의 값이 'ssd' 또는 'hdd'인 노드에만 스케줄링합니다.
+          - key: mylabel/disk
+            operator: In          # 'In' 연산자는 values 목록에 있는 값 중 하나와 일치하면 조건을 만족합니다.
+            values:
+            - ssd
+            - hdd
+  containers:
+  - name: nginx
+    image: nginx:latest

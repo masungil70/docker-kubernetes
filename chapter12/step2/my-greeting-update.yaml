@@ -1,0 +1,10 @@
+# my-greeting.yaml: 'Greeting' 커스텀 리소스의 실제 인스턴스(객체)를 정의합니다.
+# 이 파일은 'Greeting' CRD에 정의된 스키마를 따르는 데이터 객체입니다.
+apiVersion: kosa.go.kr/v1
+kind: Greeting
+metadata:
+  name: hello-world # 이 'Greeting' 오브젝트의 고유한 이름
+  namespace: default # 이 오브젝트가 생성될 네임스페이스
+spec:
+  message: "Hi" # 'Greeting' 리소스의 spec에 포함될 'message' 필드 값
+  recipient: "World" # 'Greeting' 리소스의 spec에 포함될 'recipient' 필드 값

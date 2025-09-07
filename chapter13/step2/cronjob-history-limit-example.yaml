@@ -1,0 +1,46 @@
+# CronJob의 successfulJobsHistoryLimit와 failedJobsHistoryLimit 예제
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: history-limit-example
+spec:
+  # 1분마다 실행하여 히스토리 제한을 쉽게 관찰할 수 있도록 스케줄을 설정합니다.
+  schedule: "*/1 * * * *"
+
+  # 보관할 성공한 Job의 최대 개수를 2개로 제한합니다.
+  # 이 CronJob이 1분마다 실행되면서, 성공한 Job의 수가 2개를 초과하면
+  # 가장 오래된 성공 Job부터 자동으로 삭제됩니다.
+  successfulJobsHistoryLimit: 2
+
+  # 보관할 실패한 Job의 최대 개수를 1개로 제한합니다.
+  # 이 CronJob이 1분마다 실행되면서, 실패한 Job의 수가 1개를 초과하면
+  # 가장 오래된 실패 Job부터 자동으로 삭제됩니다.
+  failedJobsHistoryLimit: 1
+
+  # 스케줄에 따라 생성될 Job 템플릿입니다.
+  jobTemplate:
+    spec:
+      # Job이 실패했을 때 재시도 횟수를 0으로 설정합니다.
+      # 이렇게 하면 실패한 Job 기록을 더 명확하게 볼 수 있습니다.
+      backoffLimit: 0
+      template:
+        spec:
+          containers:
+          - name: success-or-fail-container
+            image: busybox
+            # 셸 스크립트를 사용하여 50% 확률로 성공 또는 실패를 반환하도록 설정합니다.
+            # $RANDOM 값(0~32767)을 2로 나눈 나머지가 0이면 성공(exit 0), 아니면 실패(exit 1)합니다.
+            command:
+            - /bin/sh
+            - -c
+            - |
+              echo "Running a job that might succeed or fail..."
+              if [ $(($RANDOM % 2)) -eq 0 ]; then
+                echo "Job Succeeded!"
+                exit 0
+              else
+                echo "Job Failed!"
+                exit 1
+              fi
+          restartPolicy: OnFailure
+

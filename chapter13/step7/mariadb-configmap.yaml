@@ -1,0 +1,34 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: mariadb-init-scripts
+data:
+  01_init_primary.sql: |
+    CREATE DATABASE IF NOT EXISTS kosa_db;
+    CREATE USER IF NOT EXISTS 'kosa'@'%' IDENTIFIED BY '1004';
+    GRANT ALL PRIVILEGES ON kosa_db.* TO 'kosa'@'%';
+    GRANT SELECT ON mysql.* TO 'kosa'@'%';
+    -- Create a replication user
+    CREATE USER 'repl_user'@'%' IDENTIFIED BY 'repl_password';
+    -- Grant replication slave privilege to the replication user
+    GRANT REPLICATION SLAVE ON *.* TO 'repl_user'@'%';
+    FLUSH PRIVILEGES;
+
+    -- 예제 테이블
+    CREATE TABLE IF NOT EXISTS kosa_db.items (
+      id INT AUTO_INCREMENT PRIMARY KEY,
+      name VARCHAR(255) NOT NULL
+    ) ENGINE=InnoDB;
+  01_init_replica.sql: |
+    -- Replica 데이터베이스 초기화 스크립트 (01_init_replica.sql)
+    -- 이 스크립트는 Replica가 Primary에 연결하기 위한 CHANGE MASTER TO 명령을 포함합니다.
+    -- Primary의 바이너리 로그 파일 이름과 위치는 Primary에서 'SHOW MASTER STATUS;' 실행 후 얻은 값으로 대체해야 합니다.
+
+    STOP SLAVE;
+    CHANGE MASTER TO
+        MASTER_HOST='mariadb-0.mariadb-headless',
+        MASTER_USER='repl_user',
+        MASTER_PASSWORD='repl_password',
+        MASTER_LOG_FILE='<PRIMARY_LOG_FILE>', -- Primary에서 'SHOW MASTER STATUS;' 실행 후 얻은 값으로 대체
+        MASTER_LOG_POS=<PRIMARY_LOG_POS>;    -- Primary에서 'SHOW MASTER STATUS;' 실행 후 얻은 값으로 대체
+    START SLAVE;

@@ -1,0 +1,15 @@
+#version: '3.8'
+services:
+  web:
+    # 현재 디렉토리의 Dockerfile을 사용하여 이미지를 빌드합니다.
+    build: .
+    # 호스트의 8000번 포트와 컨테이너의 80번 포트를 연결합니다.
+    ports:
+      - "8000:80"
+    # redis 서비스가 시작된 후에 web 서비스를 시작합니다.
+    depends_on:
+      - redis
+
+  redis:
+    # Docker Hub에 있는 공식 Redis 이미지를 사용합니다.
+    image: "redis:alpine"

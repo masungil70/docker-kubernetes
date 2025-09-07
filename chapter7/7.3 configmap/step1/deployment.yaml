@@ -1,0 +1,28 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: my-app-deployment
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: my-app
+  template:
+    metadata:
+      labels:
+        app: my-app
+    spec:
+      containers:
+      - name: web-server
+        image: nginx:1.25
+        ports:
+        - containerPort: 80
+        envFrom:
+        - configMapRef:
+            name: my-app-config # 위에서 만든 ConfigMap을 참조
+        # 컨테이너 시작 시, 환경변수를 읽어 index.html 파일을 동적으로 생성
+        command: ["/bin/sh", "-c"]
+        args:
+          - |
+            echo "<html><body><h1>$GREETING, $MESSAGE</h1></body></html>" > /usr/share/nginx/html/index.html;
+            nginx -g 'daemon off;';

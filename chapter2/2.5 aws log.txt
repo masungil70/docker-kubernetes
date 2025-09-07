@@ -1,0 +1,11 @@
+#역할 -> 역할생성 -> AWS 서비스 -> EC2 -> 추가권한 -> CloudWatchFullAccess -> 역할 이름 : mycloudwatch -> 확인 
+#로그 그룹 생성 -> 이름 : mylogs 
+#로그 구룹에 로그 스트림 생성 -> 이름 : mylogstream 
+#EC2 인스턴스 생성시 IAM 역할 설정 -> mycloudwatch
+#docker-cli 설치 후 
+
+docker run -it --log-driver=awslogs \
+  --log-opt awslogs-region=ap-northeast-2 \
+  --log-opt awslogs-group=mylogs \
+  --log-opt awslogs-stream=mylogstream \
+  ubuntu:24.04

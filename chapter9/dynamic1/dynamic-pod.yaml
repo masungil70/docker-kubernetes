@@ -1,0 +1,19 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: dynamic-nginx-pod
+  labels:
+    app: dynamic-nginx
+spec:
+  containers:
+    - name: nginx
+      image: nginx:latest
+      ports:
+        - containerPort: 80
+      volumeMounts:
+        - name: dynamic-storage
+          mountPath: /usr/share/nginx/html
+  volumes:
+    - name: dynamic-storage
+      persistentVolumeClaim:
+        claimName: my-dynamic-pvc # 위에서 생성한 PVC 이름 지정

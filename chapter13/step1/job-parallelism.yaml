@@ -1,0 +1,17 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: job-parallelism
+spec:
+  # 동시에 실행될 수 있는 파드의 최대 개수를 지정합니다.
+  # 이 예제에서는 3개의 파드가 동시에 실행됩니다.
+  # completions가 지정되지 않으면, Job은 명시적으로 완료되지 않고 파드가 실패할 때마다 계속 새로 생성하여
+  # 3개의 병렬성을 유지하려고 시도합니다. 명확한 종료를 위해서는 completions와 함께 사용하는 것이 좋습니다.
+  parallelism: 3
+  template:
+    spec:
+      restartPolicy: Never
+      containers:
+      - image: busybox
+        args: ["sh", "-c", "echo Hello, World && exit 0"]
+        name: job-parallelism

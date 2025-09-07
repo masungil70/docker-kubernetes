@@ -1,0 +1,43 @@
+# my-app-hpa.yaml
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: my-app-hpa
+spec:
+  scaleTargetRef: # HPA가 스케일링할 대상 워크로드
+    apiVersion: apps/v1
+    kind: Deployment
+    name: my-app-deployment
+  minReplicas: 1 # 최소 파드 수
+  maxReplicas: 10 # 최대 파드 수
+  metrics: # 스케일링 기준이 되는 메트릭
+  - type: Resource # 리소스 메트릭 (CPU, Memory)
+    resource:
+      name: cpu # CPU 사용률을 기준으로 함
+      target:
+        type: Utilization # 사용률 (requests 대비 비율)
+        averageUtilization: 50 # 파드당 평균 CPU 사용률이 50%를 넘으면 스케일 아웃
+  # - type: Resource # 메모리 사용률을 기준으로 할 경우 (선택 사항)
+  #   resource:
+  #     name: memory
+  #     target:
+  #       type: Utilization
+  #       averageUtilization: 70 # 파드당 평균 메모리 사용률이 70%를 넘으면 스케일 아웃
+  # - type: Pods # 커스텀 메트릭 (파드당 평균) 예시
+  #   pods:
+  #     metric:
+  #       name: http_requests_per_second # 파드당 초당 HTTP 요청 수
+  #     target:
+  #       type: AverageValue
+  #       averageValue: "100" # 파드당 평균 100 요청/초를 넘으면 스케일 아웃
+  # - type: Object # 커스텀 메트릭 (특정 오브젝트) 예시
+  #   object:
+  #     metric:
+  #       name: requests_total # Ingress의 총 요청 수
+  #     describedObject:
+  #       apiVersion: networking.k8s.io/v1
+  #       kind: Ingress
+  #       name: my-ingress
+  #     target:
+  #       type: Value
+  #       value: "1000" # Ingress의 총 요청 수가 1000을 넘으면 

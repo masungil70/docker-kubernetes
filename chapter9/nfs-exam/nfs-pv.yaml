@@ -1,0 +1,16 @@
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: nfs-pv
+spec:
+  capacity:
+    storage: 1Gi
+  volumeMode: Filesystem
+  accessModes:
+    - ReadWriteMany
+  persistentVolumeReclaimPolicy: Retain
+  nfs:
+    # NFS 서버의 공유 디렉터리 경로
+    path: /mnt/nfs/html
+    # 중요: 이 부분을 실제 Master 노드의 IP 주소로 변경하세요!
+    server: 192.168.80.159

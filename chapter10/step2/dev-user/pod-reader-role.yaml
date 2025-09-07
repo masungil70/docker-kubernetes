@@ -1,0 +1,16 @@
+# rbac.authorization.k8s.io/v1 API 버전을 사용합니다.
+apiVersion: rbac.authorization.k8s.io/v1
+# 네임스페이스에 한정된 권한을 부여하는 'Role' 오브젝트를 생성합니다.
+kind: Role
+metadata:
+  # 이 Role이 적용될 네임스페이스를 'development'로 지정합니다.
+  namespace: development
+  # Role의 이름을 'pod-reader'로 지정합니다.
+  name: pod-reader
+# 이 Role이 부여할 권한 규칙을 정의합니다.
+rules:
+- apiGroups: [""] # ""는 핵심(core) API 그룹을 의미합니다. Pods, Services 등이 여기에 속합니다.
+  # 이 규칙이 적용될 리소스를 'pods'로 지정합니다.
+  resources: ["pods"]
+  # 허용할 작업을 'get', 'list', 'watch' (읽기 전용 작업)으로 지정합니다.
+  verbs: ["get", "list", "watch"]

@@ -1,0 +1,14 @@
+
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: node-exporter-sm
+  labels:
+    team: frontend # 기존 Prometheus가 발견할 수 있도록 라벨 일치
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: node-exporter # node-exporter Service를 선택
+  endpoints:
+  - port: metrics
+    interval: 15s

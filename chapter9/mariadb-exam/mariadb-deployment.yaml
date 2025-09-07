@@ -1,0 +1,43 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: mariadb-deployment-hostpath
+  labels:
+    app: mariadb-hostpath
+spec:
+  selector:
+    matchLabels:
+      app: mariadb-hostpath
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      labels:
+        app: mariadb-hostpath
+    spec:
+      # 중요: 이 부분을 MariaDB 파드를 스케줄링할 실제 Worker 노드의 이름으로 변경하세요.
+      nodeName: k8s-node1 
+      containers:
+        - name: mariadb
+          image: mariadb:10.5
+          env:
+            - name: MARIADB_ROOT_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: mariadb-secret-hostpath
+                  key: MARIADB_ROOT_PASSWORD
+            - name: MARIADB_DATABASE
+              value: kosa_db
+            - name: MARIADB_USER
+              value: kosa
+            - name: MARIADB_PASSWORD
+              value: "1004"
+          ports:
+            - containerPort: 3306
+          volumeMounts:
+            - name: mariadb-persistent-storage
+              mountPath: /var/lib/mysql
+      volumes:
+        - name: mariadb-persistent-storage
+          persistentVolumeClaim:
+            claimName: mariadb-pvc

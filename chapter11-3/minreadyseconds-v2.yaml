@@ -1,0 +1,41 @@
+# 이 YAML 파일은 minreadyseconds-v1.yaml의 업데이트 버전을 정의합니다.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: minreadyseconds-v1
+spec:
+  replicas: 1
+  minReadySeconds: 30
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+  selector:
+    matchLabels:
+      app: minready-test
+  template:
+    metadata:
+      labels:
+        app: minready-test
+    spec:
+      containers:
+      # 컨테이너 이름과 이미지가 변경되었습니다.
+      - name: minreadyseconds-v2
+        image: masungil/echo-hostname:2.0
+        imagePullPolicy: Always  # <-- 이미지 항상 docker hub에서 가져오기
+        ports:
+        - containerPort: 8000
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: myservice
+spec:
+  ports:
+  - name: web-port
+    port: 80
+    targetPort: 80
+  selector:
+    app: minready-test
+  type: NodePort

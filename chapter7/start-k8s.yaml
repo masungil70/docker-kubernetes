@@ -1,0 +1,7 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: start-k8s
+data:
+  container: docker
+  k8s: kubernetes

@@ -1,0 +1,490 @@
+✦ YAML(YAML Ain't Markup Language)은 사람이 쉽게 읽을 수 있는 데이터 직렬화 언어로, 주로 설정
+  파일에 사용됩니다. JSON의 상위 집합이므로 모든 유효한 JSON 파일은 YAML에서도 유효합니다.
+
+1. 주요 개념
+
+  1. 키-값 쌍 (Key-Value Pairs)
+
+  YAML 데이터의 가장 기본적인 구조입니다. 콜론(:)을 사용하여 키(Key)와 값(Value)을 연결합니다.
+   * 키: 값 형식으로 작성합니다.
+   * 중요: 키와 콜론(:) 사이에는 공백이 없어도 되지만, 콜론과 값 사이에는 반드시 하나 이상의
+     공백이 있어야 합니다.
+   * 키는 일반적으로 문자열입니다.
+   * 값은 문자열, 숫자, 불리언(true/false) 등 다양한 데이터 타입을 가질 수 있습니다.
+
+vi exam01.yml
+# ---  문서 시작 ---
+# 문자열 값
+name: "홍길동"
+
+# 숫자 값
+age: 30
+
+# 불리언 값
+is_student: false
+
+# 따옴표 없는 문자열도 가능합니다.
+city: 서울
+# --- 문서의 끝 ---
+
+  2. 들여쓰기 (Indentation)
+
+  들여쓰기는 YAML에서 데이터의 계층 구조를 나타내는 매우 중요한 문법입니다. 
+  부모-자식 관계를 표현할 때 사용됩니다.
+   * 들여쓰기는 공백(space)을 사용해야 합니다. 탭(tab) 문자는 절대 사용하면 안 됩니다.
+   * 일반적으로 2칸 또는 4칸의 공백을 일관되게 사용하는 것이 좋습니다.
+   * 같은 레벨(계층)에 있는 요소들은 반드시 같은 칸 수로 들여쓰기 되어야 합니다.
+
+  예제:
+  이 예제는 person이라는 키 아래에 name, age, address라는 하위 키들이 있는 구조입니다. address
+  키 아래에는 street, city가 다시 하위 키로 존재합니다.
+
+vi exam02.yml
+# ---  문서 시작 ---
+# 레벨 0
+person:
+  # 레벨 1 (2칸 들여쓰기)
+  name: 홍길동
+  age: 30
+  address:
+    # 레벨 2 (4칸 들여쓰기)
+    street: "세종대로 175"
+    city: "서울"
+# --- 문서의 끝 ---
+
+  3. 리스트 (Lists / Sequences)
+
+  순서가 있는 항목들의 모음을 나타낼 때 사용합니다. 하이픈(-)으로 각 항목을 표시합니다.
+   * 각 항목은 -  (하이픈과 공백)으로 시작합니다.
+   * 리스트의 모든 항목은 같은 레벨로 들여쓰기 되어야 합니다.
+   * 리스트의 항목으로는 단순한 값(문자열, 숫자)뿐만 아니라, 키-값 쌍(객체)도 올 수 있습니다.
+
+  예제 1: 단순한 리스트
+vi exam03.yml
+# ---  문서 시작 ---
+# 좋아하는 과일 목록
+favorite_fruits:
+  - apple
+  - banana
+  - strawberry
+# --- 문서의 끝 ---
+
+  예제 2: 객체를 포함하는 리스트
+  각 항목이 language와 level이라는 키를 가지는 객체인 리스트입니다. 이런 구조는 매우 흔하게
+  사용됩니다.
+  
+vi exam04.yml
+# 프로그래밍 능력
+skills:
+  - language: Python
+    level: expert
+  - language: JavaScript
+    level: intermediate
+  - language: SQL
+    level: beginner
+# --- 문서의 끝 ---
+
+  종합 예제
+  위의 모든 개념을 하나로 합친 종합 예제입니다.
+vi exam05.yml
+# ---  문서 시작 ---
+# 사용자 프로필 (주석)
+# 사용자 기본 정보 (키-값 쌍)
+user_id: 12345
+user_name: "김철수"
+is_active: true
+# 주소 정보 (들여쓰기를 이용한 계층 구조)
+address:
+  city: "부산"
+  zip_code: "48053"
+# 수강한 강의 목록 (리스트)
+courses_taken:
+  - "데이터베이스 입문"
+  - "웹 프로그래밍 기초"
+# 보유 기술 스택 (객체를 포함하는 리스트)
+# 각 기술은 이름과 숙련도를 가집니다.
+tech_stack:
+  - name: Docker
+    proficiency: 80
+  - name: Kubernetes
+    proficiency: 65
+  - name: Python
+    proficiency: 95
+# --- 문서의 끝 ---
+
+2. 데이터 유형 
+  YAML의 데이터 유형은 크게 스칼라(Scalars)와 컬렉션(Collections) 두 가지로 나눌 수 있습니다.
+
+  1. 스칼라 (Scalars)
+
+  스칼라는 단일 값을 나타내는 데이터 유형입니다. 문자열, 숫자, 불리언 등이 여기에 속합니다.
+
+  가. 문자열 (Strings)
+
+  가장 흔하게 사용되는 데이터 타입입니다.
+
+   * 일반 문자열 (Plain Strings): 따옴표 없이 텍스트를 그대로 사용합니다.
+   * 따옴표 문자열 (Quoted Strings): 특수 문자가 포함되거나 여러 줄을 한 줄로 표현하고 싶을 때
+      작은따옴표(')나 큰따옴표(")를 사용합니다.
+       * " (큰따옴표): 이스케이프 시퀀스(\n, \t 등)를 인식합니다.
+       * ' (작은따옴표): 이스케이프 시퀀스를 인식하지 않고 문자 그대로 받아들입니다.
+
+  예제:
+vi exam06.yml  
+# ---  문서 시작 ---
+# 일반 문자열
+my_string: Hello, YAML!
+
+# 큰따옴표 문자열 (줄바꿈 \n 이 인식됨)
+quoted_string: "이것은 첫 번째 줄입니다.\n이것은 두 번째 줄입니다."
+
+# 작은따옴표 문자열 (\n 이 그대로 출력됨)
+single_quoted_string: '이것은 첫 번째 줄입니다.\n이것은 두 번째 줄입니다.'
+# --- 문서의 끝 ---
+
+  나. 여러 줄 문자열 (Multi-line Strings)
+
+  긴 텍스트 블록을 표현할 때 유용합니다.
+
+   * 리터럴 스타일 (`|`): 줄바꿈을 그대로 유지합니다. 마지막 줄바꿈도 포함됩니다.
+   * 폴디드 스타일 (`>`): 줄바꿈을 공백으로 변환합니다. 단, 빈 줄은 줄바꿈(\n)으로 유지됩니다.
+
+  예제:
+vi exam07.yml  
+# ---  문서 시작 ---
+# 리터럴 스타일 (줄바꿈 유지)
+literal_style: |
+  첫 번째 줄입니다.
+  두 번째 줄입니다.
+  세 번째 줄입니다.
+
+# 폴디드 스타일 (줄바꿈이 공백으로 바뀜)
+folded_style: >
+  이 문장은 원래 여러 줄에 걸쳐
+  작성되었지만, 파싱될 때는
+  하나의 긴 문장으로 합쳐집니다.
+
+  하지만 이렇게 빈 줄을 넣으면
+  줄바꿈이 유지됩니다.
+# --- 문서의 끝 ---
+
+  다. 숫자 (Numbers)
+
+   * 정수 (Integers): 123, -45 등
+   * 실수 (Floats): 3.14, -0.5 등
+   * 특수 표기: .inf(무한대), -.inf(-무한대), .nan(Not a Number) 등도 지원합니다.
+
+  예제:
+vi exam08.yml
+# ---  문서 시작 ---
+# 정수
+integer_value: 100
+
+# 실수
+float_value: 3.14159
+
+# 과학적 표기법
+scientific_notation: 1.23e+4  # 12300
+# --- 문서의 끝 ---
+
+  라. 불리언 (Booleans)
+
+  참(True) 또는 거짓(False)을 나타냅니다.
+
+   * 참: true, True, TRUE, on, yes
+   * 거짓: false, False, FALSE, off, no
+   * (가독성을 위해 주로 true, false를 사용합니다.)
+
+  예제:
+vi exam09.yml  
+# ---  문서 시작 ---
+# 참
+is_enabled: true
+
+# 거짓
+is_visible: false
+# --- 문서의 끝 ---
+
+  마. Null 값
+
+  값이 없음을 명시적으로 나타냅니다.
+
+   * null 또는 ~ (물결표)를 사용합니다.
+
+  예제:
+vi exam10.yml
+# ---  문서 시작 ---
+# null 값
+middle_name: null
+
+# 물결표를 사용한 null 값
+spouse: ~
+# --- 문서의 끝 ---
+
+  2. 컬렉션 (Collections)
+
+  여러 개의 값을 묶어서 표현하는 데이터 유형입니다.
+
+  가. 리스트 (Lists / Sequences)
+
+  순서가 있는 값들의 모음입니다. 하이픈(-)으로 각 항목을 나타냅니다.
+
+  예제:
+vi exam11.yml
+# ---  문서 시작 ---
+# 문자열 리스트
+fruits:
+  - Apple
+  - Banana
+  - Orange
+
+
+# 정수 리스트
+winning_numbers: [2, 10, 23, 35, 40, 42] # 한 줄로도 표현 가능
+
+# 중첩 리스트 (리스트 안의 리스트)
+matrix:
+  - [1, 2, 3]
+  - [4, 5, 6]
+  - [7, 8, 9]
+# --- 문서의 끝 ---
+
+  나. 맵 (Maps / Dictionaries)
+
+  키: 값 쌍의 순서가 없는 모음입니다. 데이터의 구조를 표현할 때 사용됩니다.
+
+vi exam12.yml 
+# ---  문서 시작 ---
+# 기본적인 맵
+user:
+  name: "홍길동"
+  age: 30
+  is_active: true
+
+# 중첩된 맵 (맵 안의 맵)
+server_config:
+  host: "127.0.0.1"
+  port: 8080
+  database:
+    type: "PostgreSQL"
+    host: "db.example.com"
+    port: 5432
+
+#server_config.host =  "127.0.0.1"
+#server_config.port = 8080
+#server_config.database.type = "PostgreSQL"
+#server_config.database.host = "db.example.com"
+#server_config.database.port = 5432
+# --- 문서의 끝 ---
+
+  종합 예제
+  지금까지 설명한 모든 데이터 유형을 포함하는 종합 예제입니다.
+vi exam13.yml 
+# ---  문서 시작 ---
+# 직원 프로필 (맵)
+employee_profile:
+  # 스칼라 값들
+  name: "김민준"
+  employee_id: 102
+  is_manager: false
+  department: null # 아직 부서 배정 안됨 (null)
+  salary: 60000.50 # 실수
+
+  # 리스트
+  roles:
+    - "Software Engineer"
+    - "Backend Developer"
+
+  # 객체를 포함하는 리스트
+  projects:
+    - name: "Project Alpha"
+      status: "In Progress"
+    - name: "Project Beta"
+      status: "Completed"
+
+  # 여러 줄 문자열
+  notes: |
+    - 입사일: 2023-01-10
+    - 정기 평가에서 높은 점수를 받음.
+    - 다음 분기 리더 후보.
+
+  # 연락처 정보 (중첩된 맵)
+  contact:
+    email: "minjun.kim@example.com"
+    phone:
+      type: "mobile"
+      number: "010-1234-5678"
+
+# 불리언 값의 다른 표현들
+settings:
+  auto_save: on
+  dark_mode: yes
+# --- 문서의 끝 ---
+
+3. 고급기능
+
+  1. 앵커(Anchor)와 별칭(Alias)
+
+  이 기능은 "반복하지 마세요(Don't Repeat Yourself, DRY)" 원칙을 YAML에서 구현하는 핵심적인
+  방법입니다. 특정 데이터 덩어리(노드)에 이름을 붙이고(앵커), 다른 곳에서 그 이름을
+  참조하여(별칭) 재사용할 수 있습니다.
+
+   * 앵커(Anchor): & 기호를 사용하여 데이터에 이름을 붙입니다. (예: &anchor_name)
+   * 별칭(Alias): * 기호를 사용하여 앵커로 지정된 데이터를 참조합니다. (예: *anchor_name)
+
+  복잡한 설정 파일에서 동일한 설정값(예: 데이터베이스 연결 정보, 공통 환경 변수)이 여러 번
+  반복될 때 매우 유용합니다. 앵커에 정의된 값을 한 번만 수정하면, 해당 앵커를 참조하는 모든
+  별칭에 변경 사항이 자동으로 반영되어 유지보수성이 크게 향상됩니다.
+
+  api-server와 worker 두 서비스가 공통적으로 사용하는 환경 변수가 있다고 가정해 봅시다.
+
+  앵커와 별칭을 사용하지 않은 경우 (반복이 많음):
+vi exam14.yml 
+# ---  문서 시작 ---
+services:
+  api-server:
+    image: my-app
+    environment:
+      DB_HOST: "db.example.com"
+      DB_USER: "user"
+      DB_PASS: "password"
+      CACHE_HOST: "cache.example.com"
+      CACHE_PORT: "6379"
+
+  worker:
+    image: my-app-worker
+    environment:
+      DB_HOST: "db.example.com"
+      DB_USER: "user"
+      DB_PASS: "password"
+      CACHE_HOST: "cache.example.com"
+      CACHE_PORT: "6379"
+# --- 문서의 끝 ---
+
+  앵커와 별칭을 사용한 경우 (효율적이고 유지보수가 쉬움):
+vi exam15.yml 
+# ---  문서 시작 ---
+# &default_env 라는 앵커로 공통 환경 변수 맵을 정의
+x-common-env: &default_env
+  DB_HOST: "db.example.com"
+  DB_USER: "user"
+  DB_PASS: "password"
+  CACHE_HOST: "cache.example.com"
+  CACHE_PORT: "6379"
+
+services:
+  api-server:
+    image: my-app
+    # *default_env 별칭으로 앵커를 참조하여 그대로 가져옴
+    environment: *default_env
+
+  worker:
+    image: my-app-worker
+    # 여기서도 동일하게 재사용
+    environment: *default_env
+# --- 문서의 끝 ---
+
+  이제 데이터베이스 비밀번호를 변경해야 할 때, &default_env 앵커 부분만 수정하면 두 서비스에
+  모두 적용됩니다.
+
+  2. 병합 키 (Merge Key)
+
+  병합 키는 앵커/별칭 기능과 함께 사용되어, 맵(Map)을 상속받고 확장하는 기능을 제공합니다.
+
+   * 문법: <<: *anchor_name
+
+  별칭(*anchor_name)이 가리키는 맵의 모든 키-값 쌍을 현재 맵으로 가져와 병합합니다. 만약 현재
+  맵에 이미 같은 이름의 키가 존재한다면, 현재 맵의 값이 우선권을 가집니다 (즉,
+  오버라이딩됩니다).
+
+  기본적인 서비스 템플릿을 만들어두고, 각 서비스에서 이를 상속받아 필요한 부분만 추가하거나
+  변경하는 시나리오입니다.
+vi exam16.yml
+# ---  문서 시작 ---
+# &service_template 이라는 앵커로 기본 서비스 설정을 정의
+x-service-template: &service_template
+  restart: always
+  logging:
+    driver: "json-file"
+    options:
+      max-size: "10m"
+      max-file: "3"
+
+services:
+  web-server:
+    # <<: *service_template 으로 기본 설정을 병합(상속)
+    <<: *service_template
+    image: nginx:latest
+    ports:
+      - "80:80"
+
+  database:
+    # 여기서도 기본 설정을 병합
+    <<: *service_template
+    image: postgres:15
+    volumes:
+      - db-data:/var/lib/postgresql/data
+    # 기존 템플릿의 값을 오버라이딩할 수도 있습니다.
+    logging:
+      driver: "local" # 템플릿의 logging.driver 값을 덮어씀
+# --- 문서의 끝 ---
+
+  web-server와 database 서비스는 restart와 logging 설정을 &service_template으로부터
+  상속받았습니다. database 서비스는 logging.driver 값을 local로 오버라이딩했습니다.
+
+  3. 여러 문서 (Multiple Documents)
+
+  하나의 YAML 파일 안에 여러 개의 독립적인 YAML 문서를 포함시킬 수 있습니다.
+
+   * 문서 시작: --- (세 개의 하이픈)
+   * 문서 끝: ... (세 개의 점, 선택 사항이지만 명시적으로 끝을 알릴 때 사용)
+
+  이 기능은 관련 있는 여러 설정을 하나의 파일로 묶어서 관리할 때 매우 유용합니다. 특히
+  쿠버네티스(Kubernetes) 설정 파일에서 하나의 파일에 Deployment, Service, Ingress 등 여러
+  리소스를 정의할 때 널리 사용됩니다.
+
+  예제: 쿠버네티스 리소스 정의
+
+  하나의 app.yaml 파일에 웹 애플리케이션의 배포(Deployment)와 외부 노출(Service)을 함께
+  정의하는 예제입니다.
+vi exam17.yml
+# --- 첫 번째 문서 시작: Deployment 정의 ---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: my-nginx-deployment
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: nginx
+  template:
+    metadata:
+      labels:
+        app: nginx
+    spec:
+      containers:
+      - name: nginx
+        image: nginx:1.21
+        ports:
+        - containerPort: 80
+---
+# --- 두 번째 문서 시작: Service 정의 ---
+apiVersion: v1
+kind: Service
+metadata:
+  name: my-nginx-service
+spec:
+  selector:
+    app: nginx
+  ports:
+    - protocol: TCP
+      port: 80
+      targetPort: 80
+  type: LoadBalancer
+...
+# --- 문서의 끝 ---
+
+  이 파일을 kubectl apply -f app.yaml과 같이 실행하면, 쿠버네티스는 ---를 기준으로 파일을
+  나누어 두 개의 리소스를 각각 생성합니다.
+

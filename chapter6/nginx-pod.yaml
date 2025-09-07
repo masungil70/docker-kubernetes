@@ -1,0 +1,26 @@
+# API 버전: v1은 Pod, Service 등 핵심 오브젝트를 포함합니다.
+apiVersion: v1
+
+# 리소스 종류: Pod를 생성합니다.
+kind: Pod
+
+# 메타데이터: 이름, 레이블 등 파드를 식별하는 정보입니다.
+metadata:
+  name: nginx-pod-example
+  labels:
+    app: webserver    #서비스나 다른 리소스에서 이 파드를 선택할 때 사용할 레이블입니다.
+
+# 명세(Specification): 파드가 어떤 상태를 가져야 하는지에 대한 정의입니다.
+spec:
+  # 파드에 포함될 컨테이너 목록입니다. (리스트 형태)
+  containers:
+
+    # 첫 번째 컨테이너 정의
+    - name: nginx-container
+
+      # 사용할 컨테이너 이미지입니다. Docker Hub에서 nginx의 최신 버전을 가져옵니다.
+      image: nginx:latest
+
+      # 컨테이너가 외부에 노출할 포트 정보입니다.
+      ports:
+        - containerPort: 80

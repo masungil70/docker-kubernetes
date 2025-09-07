@@ -1,0 +1,23 @@
+FROM python:3.9-slim
+
+# curl 설치를 위해 패키지 목록을 업데이트하고, curl을 설치합니다.
+# --no-install-recommends 로 불필요한 패키지 설치를 막고,
+# 설치 후에는 apt 캐시를 삭제하여 이미지 용량을 다시 줄여줍니다.
+RUN apt-get update && apt-get install -y --no-install-recommends curl && \
+    apt-get clean && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /app
+
+# 의존성을 먼저 설치하여 Docker 빌드 캐시를 활용합니다.
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+
+# 헬스 체크 로직 추가된 애플리케이션 코드를 복사합니다.
+COPY ./main-unhealthy.py  ./main.py
+
+# 8000번 포트를 노출합니다.
+EXPOSE 8000
+
+# uvicorn을 사용하여 FastAPI 앱을 실행합니다.
+# main:app -> main.py 파일의 app 변수를 의미합니다.
+CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]

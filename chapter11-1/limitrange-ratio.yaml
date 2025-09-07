@@ -1,0 +1,16 @@
+# 이 YAML 파일은 LimitRange 객체를 정의합니다.
+# 이 LimitRange는 리소스의 Limit과 Request 사이의 최대 비율을 제한하는 데 중점을 둡니다.
+apiVersion: v1
+kind: LimitRange
+metadata:
+  name: limitrange-ratio
+spec:
+  limits:
+  - # 이 LimitRange 항목은 개별 'Container'에 적용됩니다.
+    type: Container
+    # maxLimitRequestRatio는 Limit과 Request의 최대 비율을 강제합니다.
+    # 예를 들어, memory: 1.5는 memory.limits가 memory.requests의 1.5배를 초과할 수 없음을 의미합니다.
+    # cpu: 1은 cpu.limits와 cpu.requests가 동일해야 함을 의미합니다. (Guaranteed QoS 강제)
+    maxLimitRequestRatio:
+      memory: 1.5
+      cpu: 1

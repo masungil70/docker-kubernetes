@@ -1,0 +1,73 @@
+# 1. Apple 애플리케이션
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: apple-app
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: apple
+  template:
+    metadata:
+      labels:
+        app: apple
+    spec:
+      containers:
+      - name: apple-container
+        image: masungil/http-echo
+        imagePullPolicy: Always
+        ports:
+        - containerPort: 8000
+        env:
+        - name: ECHO_TEXT
+          value: "이것은 사과 애플리케이션입니다!"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: apple-service
+spec:
+  selector:
+    app: apple
+  ports:
+  - protocol: TCP
+    port: 8000 # Service 포트
+
+---
+
+# 2. Banana 애플리케이션
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: banana-app
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: banana
+  template:
+    metadata:
+      labels:
+        app: banana
+    spec:
+      containers:
+      - name: banana-container
+        image: masungil/http-echo
+        imagePullPolicy: Always
+        ports:
+        - containerPort: 8000
+        env:
+        - name: ECHO_TEXT
+          value: "이것은 바나나 애플리케이션입니다!"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: banana-service
+spec:
+  selector:
+    app: banana
+  ports:
+  - protocol: TCP
+    port: 8000 # Service 포트

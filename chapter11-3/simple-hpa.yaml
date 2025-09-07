@@ -1,0 +1,26 @@
+# 이 YAML 파일은 간단한 HorizontalPodAutoscaler(HPA)를 정의합니다.
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: simple-hpa
+spec:
+  # scaleTargetRef는 HPA가 스케일링할 대상을 지정합니다.
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    # "simple-deployment"라는 이름의 디플로이먼트를 대상으로 합니다.
+    name: simple-deployment
+  # metrics는 스케일링의 기준이 될 메트릭을 정의합니다.
+  metrics:
+  - resource:
+      # CPU 사용량을 기준으로 합니다.
+      name: cpu
+      target:
+        # 파드들의 평균 CPU 사용률이 50%를 초과하면 파드 수를 늘립니다.
+        averageUtilization: 50
+        type: Utilization
+    type: Resource
+  # maxReplicas는 스케일링될 수 있는 파드의 최대 개수입니다.
+  maxReplicas: 5
+  # minReplicas는 스케일링될 수 있는 파드의 최소 개수입니다.
+  minReplicas: 1

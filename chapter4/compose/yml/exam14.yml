@@ -1,0 +1,20 @@
+# ---  문서 시작 ---
+services:
+  api-server:
+    image: my-app
+    environment:
+      DB_HOST: "db.example.com"
+      DB_USER: "user"
+      DB_PASS: "password"
+      CACHE_HOST: "cache.example.com"
+      CACHE_PORT: "6379"
+
+  worker:
+    image: my-app-worker
+    environment:
+      DB_HOST: "db.example.com"
+      DB_USER: "user"
+      DB_PASS: "password"
+      CACHE_HOST: "cache.example.com"
+      CACHE_PORT: "6379"
+# --- 문서의 끝 ---

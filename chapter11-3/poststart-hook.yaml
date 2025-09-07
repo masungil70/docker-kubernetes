@@ -1,0 +1,17 @@
+# 이 YAML 파일은 postStart 라이프사이클 훅(Lifecycle Hook)을 사용하는 파드를 정의합니다.
+apiVersion: v1
+kind: Pod
+metadata:
+  name: poststart-hook
+spec:
+  containers:
+  - name: poststart-hook
+    image: nginx
+    # lifecycle은 컨테이너의 생명주기 동안 특정 시점에 실행될 훅을 정의합니다.
+    lifecycle:
+      # postStart 훅은 컨테이너가 생성된 직후에 실행됩니다.
+      # 컨테이너의 메인 프로세스가 시작되기 전 또는 동시에 실행될 수 있으며, 완료를 보장하지 않습니다.
+      postStart:
+        exec:
+          # 컨테이너 내에서 "touch /myfile" 명령어를 실행하여 /myfile이라는 빈 파일을 생성합니다.
+          command: ["sh", "-c", "touch /myfile"]

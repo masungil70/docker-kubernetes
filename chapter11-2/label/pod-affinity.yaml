@@ -1,0 +1,15 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: my-frontend-pod
+spec:
+  affinity:
+    podAffinity:
+      requiredDuringSchedulingIgnoredDuringExecution:
+      - labelSelector:
+          matchLabels:
+            app: backend  # 'app: backend' 레이블을 가진 파드를 찾음
+        topologyKey: kubernetes.io/hostname # 동일한 노드 내에서 찾음
+  containers:
+  - name: frontend
+    image: frontend-image

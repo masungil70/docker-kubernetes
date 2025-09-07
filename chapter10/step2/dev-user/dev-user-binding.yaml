@@ -1,0 +1,19 @@
+# rbac.authorization.k8s.io/v1 API 버전을 사용합니다.
+apiVersion: rbac.authorization.k8s.io/v1
+# Role을 특정 주체(Subject)에게 연결하는 'RoleBinding' 오브젝트를 생성합니다.
+kind: RoleBinding
+metadata:
+  # RoleBinding의 이름을 'read-pods-in-development'로 지정합니다.
+  name: read-pods-in-development
+  # 이 RoleBinding이 적용될 네임스페이스를 'development'로 지정합니다.
+  namespace: development
+# 이 RoleBinding의 대상이 되는 주체(사용자, 그룹, 서비스 어카운트)를 정의합니다.
+subjects:
+- kind: User # 주체의 종류를 'User'로 지정합니다.
+  name: dev-user # 권한을 부여할 사용자의 이름입니다. 인증서의 CN 값과 일치해야 합니다.
+  apiGroup: rbac.authorization.k8s.io
+# 부여할 Role을 참조합니다.
+roleRef:
+  kind: Role # 참조할 대상이 'Role'임을 지정합니다.
+  name: pod-reader # 위에서 생성한 'pod-reader' Role을 참조합니다.
+  apiGroup: rbac.authorization.k8s.io

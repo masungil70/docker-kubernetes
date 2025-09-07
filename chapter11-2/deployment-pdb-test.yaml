@@ -1,0 +1,26 @@
+# 이 YAML 파일은 PodDisruptionBudget(PDB)의 대상이 될 파드들을 생성하는 디플로이먼트 예제입니다.
+# PDB는 자발적인 중단(voluntary disruption)으로부터 애플리케이션을 보호하는 역할을 합니다.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: deployment-pdb-test
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      # 이 레이블 셀렉터는 디플로이먼트가 관리할 파드를 식별합니다.
+      app: webserver
+  template:
+    metadata:
+      name: my-webserver
+      labels:
+        # 'app: webserver' 레이블은 PDB가 이 파드들을 대상으로 삼도록 합니다.
+        # (simple-pdb-example.yaml 파일 참조)
+        app: webserver
+    spec:
+      containers:
+      - name: my-webserver
+        # 이 이미지는 요청을 받으면 자신의 호스트 이름을 응답으로 반환하는 간단한 웹서버입니다.
+        image: alicek106/rr-test:echo-hostname
+        ports:
+        - containerPort: 80

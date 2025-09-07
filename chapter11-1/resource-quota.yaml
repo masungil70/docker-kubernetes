@@ -1,0 +1,20 @@
+# 이 YAML 파일은 ResourceQuota 객체를 정의합니다.
+# ResourceQuota는 네임스페이스 수준에서 리소스 사용량을 총량으로 제한하는 역할을 합니다.
+# 이를 통해 여러 팀이나 사용자가 클러스터를 공유할 때, 특정 네임스페이스가 자원을 독점하는 것을 방지합니다.
+apiVersion: v1
+kind: ResourceQuota
+metadata:
+  name: resource-quota-example
+  # 이 할당량은 'default' 네임스페이스에 적용됩니다.
+  namespace: default
+spec:
+  # hard는 네임스페이스 전체에 대한 하드 리밋(절대 한도)을 설정합니다.
+  hard:
+    # 네임스페이스 내 모든 Pod의 requests.cpu 합계는 1 코어를 초과할 수 없습니다.
+    requests.cpu: "1000m"
+    # 네임스페이스 내 모든 Pod의 requests.memory 합계는 500Mi를 초과할 수 없습니다.
+    requests.memory: "500Mi"
+    # 네임스페이스 내 모든 Pod의 limits.cpu 합계는 1.5 코어를 초과할 수 없습니다.
+    limits.cpu: "1500m"
+    # 네임스페이스 내 모든 Pod의 limits.memory 합계는 1000Mi(1Gi)를 초과할 수 없습니다.
+    limits.memory: "1000Mi"

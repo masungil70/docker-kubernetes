@@ -1,0 +1,15 @@
+# 이 YAML 파일은 'nodeSelector'를 사용하여 특정 레이블을 가진 노드에만
+# 포드를 스케줄링하는 가장 간단한 방법을 보여주는 예제입니다.
+apiVersion: v1
+kind: Pod
+metadata:
+  name: nginx-nodeselector
+spec:
+  # 'nodeSelector'는 키-값 쌍의 맵입니다.
+  # 포드는 여기에 명시된 모든 레이블을 가진 노드에만 스케줄링됩니다.
+  nodeSelector:
+    # 'mylabel/disk' 레이블의 값이 'hdd'인 노드를 선택합니다.
+    mylabel/disk: hdd
+  containers:
+  - name: nginx
+    image: nginx:latest

@@ -1,0 +1,35 @@
+version: '3.8'
+
+services:
+  backend:
+    restart: always
+    secrets:
+      - db_password
+
+  db:
+    restart: always
+    environment:
+      - MYSQL_ROOT_PASSWORD_FILE=/run/secrets/db_root_password
+      - MYSQL_DATABASE=${DB_NAME}
+      - MYSQL_USER=${DB_USER}
+      - MYSQL_PASSWORD_FILE=/run/secrets/db_password
+    secrets:
+      - db_password
+      - db_root_password
+
+  nginx:
+    image: nginx:alpine
+    ports:
+      - "80:80" # 호스트의 80번 포트를 Nginx 컨테이너의 80번 포트에 연결
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/conf.d/default.conf:ro # Nginx 설정 파일 마운트
+    depends_on:
+      - backend # 백엔드 서비스가 시작된 후에 Nginx가 시작되도록 설정
+    restart: always
+
+secrets:
+  db_password:
+    file: ./secrets/db_password.txt
+  db_root_password:
+    file: ./secrets/db_root_password.txt
+

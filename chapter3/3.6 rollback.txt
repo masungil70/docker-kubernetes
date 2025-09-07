@@ -1,0 +1,166 @@
+Docker Swarm에서 롤백(Rollback)이란?
+
+  Docker Swarm에서 롤백(Rollback)은 서비스 업데이트가 실패하거나 예상치 못한 문제를 일으켰을 때, 서비스의 이전 안정적인 버전으로 되돌리는
+  기능입니다. 이는 애플리케이션의 안정성과 가용성을 유지하는 데 매우 중요한 메커니즘입니다.
+
+  롤백의 중요성
+
+  소프트웨어 배포는 항상 위험을 수반합니다. 새로운 버전의 애플리케이션을 배포했을 때 다음과 같은 문제가 발생할 수 있습니다:
+
+   * 버그: 새로운 코드에 예상치 못한 버그가 있을 수 있습니다.
+   * 성능 저하: 새로운 버전이 이전 버전보다 성능이 떨어질 수 있습니다.
+   * 호환성 문제: 다른 서비스나 시스템과의 호환성 문제가 발생할 수 있습니다.
+   * 잘못된 설정: 업데이트 시 잘못된 설정이 적용될 수 있습니다.
+
+  이러한 문제 발생 시, 롤백 기능을 통해 신속하게 이전의 정상 작동 상태로 돌아갈 수 있으며, 이는 서비스 중단을 최소화하고 사용자 경험을 보호하는
+  데 필수적입니다.
+
+  롤백 작동 방식
+
+  Docker Swarm은 서비스 업데이트를 수행할 때, 이전 서비스 정의(이미지, 환경 변수, 포트 매핑 등)를 내부적으로 기록해 둡니다. 롤백 명령이
+  실행되거나 자동 롤백 조건이 충족되면, Swarm은 이 기록된 이전 서비스 정의를 사용하여 현재 실행 중인 태스크(컨테이너)들을 이전 버전으로
+  교체합니다.
+
+  롤백 과정은 업데이트 과정과 유사하게 롤링 업데이트(Rolling Update) 방식으로 진행됩니다. 즉, 모든 컨테이너를 한 번에 중단시키는 대신,
+  순차적으로 이전 버전의 컨테이너로 교체하여 서비스 중단을 최소화합니다.
+
+  롤백 유형
+
+  Docker Swarm에서 롤백은 크게 두 가지 방식으로 트리거될 수 있습니다.
+
+   1. 수동 롤백 (Manual Rollback):
+       * 관리자가 docker service rollback <서비스_이름> 명령어를 직접 실행하여 롤백을 시작합니다.
+       * 업데이트가 완료된 후 문제가 발견되었을 때 유용합니다.
+
+   2. 자동 롤백 (Automatic Rollback):
+       * 서비스 업데이트 중 특정 조건(예: 태스크 실패율 임계값 초과)이 충족되면 Swarm이 자동으로 롤백을 시작합니다.
+       * 이는 --update-failure-action rollback 옵션을 서비스에 설정했을 때만 작동합니다.
+       * 업데이트가 진행되는 동안 문제를 감지하고 자동으로 복구하는 데 사용됩니다.
+
+  주요 서비스 업데이트/롤백 관련 파라미터
+
+  서비스 업데이트 및 롤백 동작을 제어하는 중요한 파라미터들이 있습니다:
+
+   * --update-delay DURATION: 각 태스크 그룹 업데이트 사이의 지연 시간 (기본값: 0s).
+   * --update-parallelism N: 한 번에 업데이트할 태스크(컨테이너)의 수 (기본값: 1).
+   * --update-failure-action [pause|continue|rollback] (기본값: pause): 업데이트 중 태스크 실패 시 Swarm의 동작을 정의합니다.
+       * pause: 업데이트를 일시 중지합니다.
+       * continue: 실패한 태스크를 무시하고 업데이트를 계속합니다.
+       * rollback: 업데이트를 중단하고 이전 버전으로 롤백합니다.
+   * --update-max-failure-ratio FLOAT (기본값: 0): 업데이트 중 허용되는 최대 태스크 실패 비율입니다. 이 비율을 초과하면
+     --update-failure-action에 정의된 동작을 수행합니다.
+   * --update-monitor DURATION: 업데이트된 태스크가 성공적으로 시작되었는지 모니터링하는 시간입니다. 이 시간 내에 태스크가 실패하면 실패로
+     간주됩니다.
+   * --rollback-delay DURATION: 각 태스크 그룹 롤백 사이의 지연 시간 (기본값: 0s).
+   * --rollback-parallelism N: 한 번에 롤백할 태스크(컨테이너)의 수 (기본값: 1).
+   * --rollback-monitor DURATION: 롤백된 태스크가 성공적으로 시작되었는지 모니터링하는 시간입니다.
+
+  롤백 예제
+
+  이 예제에서는 my-fastapi-whoami 이미지를 사용하여 롤백 과정을 시연합니다.
+
+  (사전 준비)
+   * Docker Swarm 클러스터가 구성되어 있어야 합니다.
+   * my-fastapi-whoami:latest 이미지가 Docker 레지스트리(예: Docker Hub)에 푸시되어 있거나, 모든 Swarm 노드에 로컬로 존재해야 합니다. (이전
+     섹션에서 빌드하고 푸시한 이미지를 사용합니다.)
+   * my-fastapi-whoami:badversion과 같이 존재하지 않거나 실행되지 않는 이미지를 "실패를 유발하는 이미지"로 가정합니다.
+
+  1. 초기 서비스 생성 (안정적인 버전)
+
+  먼저, my-fastapi-whoami:latest 이미지를 사용하여 my-app이라는 서비스를 생성합니다.
+
+   docker service create \
+     --name my-app \
+     --publish published=8000,target=8000 \
+     --replicas 3 \
+     masungil/my-fastapi-whoami:latest
+
+  서비스가 정상적으로 실행 중인지 확인합니다:
+
+   1 docker service ps my-app
+  모든 태스크가 Running 상태여야 합니다.
+
+  2. 수동 롤백 시연
+
+  이제 서비스에 문제가 있는 업데이트를 시도하고, 수동으로 롤백합니다.
+
+  2.1. 문제 있는 버전으로 업데이트 시도:
+  존재하지 않는 이미지 태그(badversion)로 서비스를 업데이트합니다.
+
+   docker service update --image masungil/my-fastapi-whoami:badversion my-app
+
+  2.2. 업데이트 실패 확인:
+  업데이트가 진행되면서 태스크들이 Rejected 또는 Failed 상태로 전환되는 것을 볼 수 있습니다.
+
+   docker service ps my-app
+  출력 예시:
+
+    ID             NAME           IMAGE                                   NODE      DESIRED STATE   CURRENT STATE                ERROR                              PORTS
+    k1q15j90rk3b   my-app.1       masungil/my-fastapi-whoami:latest       node1     Running         Running about a minute ago                
+    pgzhh7ktt6j0   my-app.2       masungil/my-fastapi-whoami:badversion   node2     Ready           Preparing 2 seconds ago                   
+    gyva9x8qp7uf    \_ my-app.2   masungil/my-fastapi-whoami:badversion   node2     Shutdown        Rejected 2 seconds ago       "No such image: masungil/my-fa…"
+    eg1i2cb00ojc    \_ my-app.2   masungil/my-fastapi-whoami:latest       node2     Shutdown        Shutdown 4 seconds ago                    
+    n7te54h9oe18   my-app.3       masungil/my-fastapi-whoami:latest       manager   Running         Running about a minute ago                
+
+  서비스는 masungil/my-fastapi-whoami:badversion으로 업데이트하려고 시도했지만, 이미지를 찾을 수 없어 실패하고 있습니다.
+
+  2.3. 수동 롤백 실행:
+  이제 이전의 안정적인 버전으로 롤백합니다.
+
+   docker service rollback my-app
+
+  2.4. 롤백 확인:
+  docker service ps my-app 명령어를 다시 실행하면, 태스크들이 다시 my-fastapi-whoami:latest 이미지로 돌아가 Running 상태가 되는 것을 볼 수
+  있습니다.
+
+   docker service ps my-app
+  출력 예시:
+
+  ID             NAME           IMAGE                                   NODE      DESIRED STATE   CURRENT STATE             ERROR                              PORTS
+  k1q15j90rk3b   my-app.1       masungil/my-fastapi-whoami:latest       node1     Running         Running 2 minutes ago                     
+  3vo9imxetsd2   my-app.2       masungil/my-fastapi-whoami:latest       node2     Running         Running 7 seconds ago                     
+  v3w74ss4aea4    \_ my-app.2   masungil/my-fastapi-whoami:badversion   node1     Shutdown        Shutdown 12 seconds ago                   
+  i8mmu5c1jugl    \_ my-app.2   masungil/my-fastapi-whoami:badversion   manager   Shutdown        Rejected 20 seconds ago   "No such image: masungil/my-fa…"
+  y4n1sb75hvn2    \_ my-app.2   masungil/my-fastapi-whoami:badversion   manager   Shutdown        Rejected 25 seconds ago   "No such image: masungil/my-fa…"
+  tqpyp0hy0uvm    \_ my-app.2   masungil/my-fastapi-whoami:badversion   manager   Shutdown        Rejected 30 seconds ago   "No such image: masungil/my-fa…"
+  n7te54h9oe18   my-app.3       masungil/my-fastapi-whoami:latest       manager   Running         Running 2 minutes ago     
+
+  서비스가 성공적으로 이전 버전으로 롤백되었습니다.
+
+  3. 자동 롤백 시연
+
+  이번에는 업데이트 실패 시 자동으로 롤백되도록 서비스를 설정하고 시연합니다.
+
+  3.1. 자동 롤백 설정으로 서비스 업데이트:
+  --update-failure-action rollback과 --update-max-failure-ratio 0.2 (20% 실패율 허용)를 설정하여 서비스를 업데이트합니다.
+
+   docker service update \
+     --update-failure-action rollback \
+     --update-max-failure-ratio 0.2 \
+     my-app
+  이 명령은 서비스의 업데이트 정책만 변경하며, 실제 이미지를 업데이트하지는 않습니다.
+
+  3.2. 다시 문제 있는 버전으로 업데이트 시도 (자동 롤백 트리거):
+  이제 다시 존재하지 않는 이미지 태그로 업데이트를 시도합니다.
+
+   docker service update --image my-fastapi-whoami:anotherbadversion my-app
+
+  3.3. 자동 롤백 과정 관찰:
+  docker service ps my-app 명령어를 반복적으로 실행하면서 변화를 관찰합니다.
+
+   docker service ps my-app
+  처음에는 태스크들이 anotherbadversion으로 업데이트되려다 실패(Rejected)하는 것을 볼 수 있습니다.
+  하지만 곧 Swarm이 실패율을 감지하고 자동으로 롤백을 시작하여, 태스크들이 다시 my-fastapi-whoami:latest 이미지로 돌아가 Running 상태가 되는
+  것을 확인할 수 있습니다.
+
+  관찰 포인트:
+   * 일부 태스크가 anotherbadversion으로 변경되려다 Rejected 상태가 됩니다.
+   * --update-max-failure-ratio 0.2 (3개 중 1개 이상 실패 시)를 초과하면, Swarm은 자동으로 롤백을 시작합니다.
+   * 이후 태스크들은 다시 my-fastapi-whoami:latest 이미지로 돌아갑니다.
+
+  4. 정리
+
+  테스트가 완료되면 서비스를 제거합니다.
+
+   docker service rm my-app
+

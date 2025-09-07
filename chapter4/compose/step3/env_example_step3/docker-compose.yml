@@ -1,0 +1,41 @@
+version: '3.8'
+
+services:
+  backend:
+    build: ./backend
+    ports:
+      - "8002:8000" # 다른 예제와의 충돌 방지
+    # 민감하지 않은 정보는 여전히 환경 변수로 전달할 수 있습니다.
+    environment:
+      - DB_HOST=db
+      - DB_NAME=kosa_db
+      - DB_USER=kosa
+      # DB_PASSWORD는 이제 secret으로 안전하게 관리됩니다.
+    depends_on:
+      - db
+    # 이 서비스에서 사용할 secret들을 명시합니다.
+    secrets:
+      - db_password
+
+  db:
+    image: mariadb:10.5
+    restart: always
+    environment:
+      # MariaDB 이미지는 _FILE 접미사를 사용하여 파일로부터 비밀번호를 읽는 기능을 지원합니다.
+      # 컨테이너 내의 /run/secrets/ 경로에 마운트된 secret 파일을 지정합니다.
+      - MYSQL_ROOT_PASSWORD_FILE=/run/secrets/db_root_password
+      - MYSQL_DATABASE=kosa_db
+      - MYSQL_USER=kosa
+      - MYSQL_PASSWORD_FILE=/run/secrets/db_password
+    secrets:
+      - db_root_password
+      - db_password
+
+# 최상위 레벨에서 사용할 secret들을 정의합니다.
+# 실제 비밀번호는 `file:`에 지정된 경로의 파일에 저장되어 있습니다.
+secrets:
+  db_password:
+    file: ./secrets/db_password.txt
+  db_root_password:
+    file: ./secrets/db_root_password.txt
+

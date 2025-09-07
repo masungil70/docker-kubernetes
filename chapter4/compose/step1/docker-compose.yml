@@ -1,0 +1,32 @@
+#version: '3.8'
+#
+#docker run --name mysql -e MYSQL_ROOT_PASSWORD=1004 mysql
+#docker run --name web  -p 80:80 httpd
+#
+#docker stop mysql 
+#docker rm mysql 
+#
+#docker stop  web
+#docker rm  web
+#
+#docker compose up
+#docker compose down
+
+services:
+  web:
+    image:  httpd
+    ports:
+      - "80:80"
+    links:
+      - mysql:db
+    depends_on:
+      - mysql
+
+  mysql:
+    image: mysql
+    environment:
+      MYSQL_ROOT_PASSWORD: 1004
+
+#컨테이너 이름 작성 규칙
+# 프로젝트명_서비스명_컨테이너번호
+# 프로젝트명 => 폴더명 

@@ -1,0 +1,65 @@
+#컨테이너 로그 출력 
+#mysql:5.7를 백그라운드에서 실행 로그 출력되지 않음  
+docker run -d --name mysql -e MYSQL_ROOT_PASSWORD=1234 mysql:5.7
+
+#위 실행로그를 확인하기 위해 docker logs 명령 사용
+#docker logs [컨테이너명] 
+docker logs mysql 
+
+#컨테이너 오류 나는 상황을 확인 함 (환경설정 변수 비밀번호를 입력하지 않고 실행)
+#환경설정 변수 비밀번호를 입력하지 않고 실행
+docker run -d --name no_passwd_mysql mysql:5.7
+
+#docker 실행 결과 확인 
+docker ps -a 
+
+#docker 로그 확인 (환경설정 변수 비밀번호 오류 확인)
+docker logs no_passwd_mysql 
+  
+#최근 10줄만 로그 확인시 
+docker logs -n 10 mysql   
+#또는 
+docker logs --tail 10 mysql   
+
+#현재 시간 기준으로 이전 10초 전의 로그를 확인하려고 하면 (시(h), 분(m), 초(s))
+#상태시간 기준 
+docker logs --since 10s mysql
+
+#절대 시간 기준 
+docker logs --since "2025-07-27T08:59:50" mysql
+
+#host 장비와 컨테이너의 시간을 동일하게 하는 방법 
+docker run -d \
+  --name mysql \
+  -e MYSQL_ROOT_PASSWORD=1234 \
+  -v /etc/localtime:/etc/localtime:ro \
+  -v /etc/timezone:/etc/timezone:ro \
+  mysql:5.7
+  
+#timezone을 서울로 변경 
+sudo timedatectl set-timezone Asia/Seoul  
+
+#컨테이너 로그 host 장비에 기록된 것 확인(sudo 명령 보다는 root 권한으로 확인) 
+#root 권한으로 변경
+sudo su - 
+
+#로그 저장 위치 
+#/var/lib/docker/containers/[컨테이너ID]/[컨테이너ID]-json.log 에 저장됨 
+#cat /var/lib/docker/containers/[컨테이너ID]/[컨테이너ID]-json.log
+
+#컨테이너 실행시 로그 파일 갯수 및 최대 크기 설정 
+#--log-opt max-file=3  로그 저장 파일의 최대 갯수를 3개로 설정
+#--log-opt max-size=5k 로그 저장 파일의 최대 크기 5k로 설정 
+docker run -d \
+  --log-opt max-file=3 \
+  --log-opt max-size=5k \
+  --name log-test ubuntu:24.04
+  
+#별도의 터미널을 실행하여 docker logs -f log-test 명령을 실행하여 로그를 확인한다 
+
+#별도의 터미널을 실행하여 host에 기록되는 로그 파일을 확인한다 
+#cat /var/lib/docker/containers/[컨테이너ID]/[컨테이너ID]-json.log
+
+
+#자세한 사용법은 https://docs.docker.com/reference/cli/docker/container/logs/ 참조 
+

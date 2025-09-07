@@ -1,0 +1,15 @@
+# 이 YAML 파일은 쿠버네티스 파드(Pod)를 정의합니다.
+apiVersion: v1
+kind: Pod
+metadata:
+  name: completed-pod-example
+spec:
+  # restartPolicy가 명시적으로 설정되지 않았으므로 기본값인 "Always"가 적용됩니다.
+  # "Always"는 컨테이너가 종료될 때마다 항상 재시작함을 의미합니다.
+  containers:
+  - name: completed-pod-example
+    image: busybox
+    # "sh -c 'sleep 10 && exit 0'" 명령어는 10초 동안 대기한 후 정상적으로(종료 코드 0) 종료됩니다.
+    # restartPolicy가 Always이므로, 이 컨테이너는 계속해서 재시작됩니다.
+    command: ["sh"]
+    args: ["-c", "sleep 10 && exit 0"]

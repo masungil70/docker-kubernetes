@@ -1,0 +1,15 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: fastapi-app-service
+  labels:
+    app: fastapi-app
+spec:
+  type: ClusterIP # Use LoadBalancer for external access in cloud environments
+  ports:
+    - port: 80
+      targetPort: 80
+      protocol: TCP
+      name: http
+  selector:
+    app: fastapi-app

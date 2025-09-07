@@ -1,0 +1,37 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: backend
+  labels:
+    app: backend
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: backend
+  template:
+    metadata:
+      labels:
+        app: backend
+    spec:
+      automountServiceAccountToken: false
+      containers:
+      - name: backend
+        image: masungil/env_backend:latest 
+        imagePullPolicy: Always
+        ports:
+        - containerPort: 8000
+        envFrom:
+        - configMapRef:
+            name: db-config
+        volumeMounts:
+        - name: db-password
+          mountPath: "/run/secrets"
+          readOnly: true
+      volumes:
+      - name: db-password
+        secret:
+          secretName: db-secret
+          items:
+          - key: db-password
+            path: db_password

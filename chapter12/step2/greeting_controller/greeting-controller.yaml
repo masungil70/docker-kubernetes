@@ -1,0 +1,46 @@
+# greeting-controller.yaml: 커스텀 컨트롤러(오퍼레이터)가 쿠버네티스 API와 상호작용하기 위한 RBAC(Role-Based Access Control) 설정 파일입니다.
+
+# 1. ServiceAccount: 컨트롤러 파드가 클러스터 API와 통신할 때 사용할 계정
+#    파드는 이 ServiceAccount의 ID를 사용하여 API 서버에 자신을 인증합니다.
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: greeting-controller-sa
+  namespace: default
+
+---
+# 2. ClusterRole: 컨트롤러가 클러스터 전역 리소스와 네임스페이스 리소스를 다룰 수 있는 권한 정의
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: greeting-controller-clusterrole
+rules:
+# kopf 프레임워크가 CRD의 존재를 확인하기 위해 필요한 권한
+- apiGroups: ["apiextensions.k8s.io"]
+  resources: ["customresourcedefinitions"]
+  verbs: ["get", "list", "watch"]
+
+# 컨트롤러가 이벤트를 생성하여 상태를 보고하기 위해 필요한 권한
+- apiGroups: [""]
+  resources: ["events"]
+  verbs: ["create", "patch"]
+
+# 컨트롤러가 'Greeting' 커스텀 리소스를 완전히 관리하기 위해 필요한 모든 권한
+- apiGroups: ["kosa.go.kr"]
+  resources: ["greetings", "greetings/status"]
+  verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+
+---
+# 3. ClusterRoleBinding: 위에서 정의한 ClusterRole을 ServiceAccount에 연결
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: greeting-controller-clusterbinding
+subjects:
+- kind: ServiceAccount
+  name: greeting-controller-sa
+  namespace: default
+roleRef:
+  kind: ClusterRole
+  name: greeting-controller-clusterrole
+  apiGroup: rbac.authorization.k8s.io

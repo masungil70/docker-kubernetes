@@ -1,0 +1,23 @@
+# 이 YAML 파일은 노드 어피니티(Node Affinity)의 '선호(preferred)' 규칙을 사용하는 예제입니다.
+# 'preferredDuringSchedulingIgnoredDuringExecution'은 스케줄러가 조건을 만족하는 노드를
+# 선호하지만, 만족하는 노드가 없어도 다른 노드에 스케줄링될 수 있음을 의미합니다.
+apiVersion: v1
+kind: Pod
+metadata:
+  name: nginx-nodeaffinity-preferred
+spec:
+  affinity:
+    nodeAffinity:
+      preferredDuringSchedulingIgnoredDuringExecution:
+      # 여러 개의 선호 조건을 정의할 수 있습니다.
+      - weight: 80               # 조건에 대한 가중치 (1-100). 높은 값일수록 우선순위가 높습니다.
+        preference:
+          matchExpressions:
+          # 'mylabel/disk' 레이블의 값이 'ssd'인 노드를 선호합니다.
+          - key: mylabel/disk
+            operator: In
+            values:
+            - ssd
+  containers:
+  - name: nginx
+    image: nginx:latest

@@ -1,0 +1,20 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: backend-api-v1 # v1 배포임을 명시
+spec:
+  replicas: 2 # 2개의 파드를 실행
+  selector:
+    matchLabels:
+      app: backend-api
+  template:
+    metadata:
+      labels:
+        app: backend-api # Service가 찾아올 이름표(라벨)
+        version: v1
+    spec:
+      containers:
+      - name: api-server
+        image: masungil/echo-hostname:1.0 # 요청에 텍스트를 응답하는 간단한 이미지
+        ports:
+        - containerPort: 80

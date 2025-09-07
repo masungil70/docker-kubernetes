@@ -1,0 +1,47 @@
+Dockerfile 잘못 사용되는 예
+
+Dockerfile로 이미지 생성시 /test/dummy에 100M 파일을 생성하고 다음에 /test/dummy 파일을 삭제한다 
+예상하는 이미지의 크기는 약 80M가 될것을 예상하지만 실제는 180M가 된다 
+
+vi Dockerfile.wring 
+---------------------------------------
+# Dockerfile
+
+FROM ubuntu:24.04
+
+# /test 디렉토리 생성
+RUN mkdir /test
+
+# 100MB 크기의 dummy 파일 생성 -> 각각 레이어로 생성됨 
+RUN fallocate -l 100m /test/dummy
+
+# dummy 파일 삭제  -> 각각 레이어로 생성됨, 생성된 레이어는 삭제되지 않는다 
+RUN rm /test/dummy       
+-----------------------------------------
+
+Docker 빌드 이미지 생성한다 
+docker build -t wrong-example -f Dockerfile.wrong .
+
+생성된 이미지의 크기를 확인다(180M)
+docker images 
+
+
+위와 같은 문제를 해결하기 위해서는 RUN 명령시 연속(&&) 하여 실행을 해야 1개의 레이어 파일로 생성된다 
+vi  Dockerfile.good
+----------------------------------------------
+# Dockerfile
+FROM ubuntu:24.04
+
+# /test 디렉토리 생성
+RUN mkdir /test && \
+ # 100MB 크기의 dummy 파일 생성
+ fallocate -l 100m /test/dummy && \
+ # dummy 파일 삭제
+ rm /test/dummy
+----------------------------------------------
+
+Docker 빌드 이미지 생성한다 
+docker build -t good-example -f Dockerfile.good .
+
+생성된 이미지의 크기를 확인다(약 80M)
+docker images 

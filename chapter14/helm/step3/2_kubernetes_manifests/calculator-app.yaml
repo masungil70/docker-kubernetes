@@ -1,0 +1,64 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: calculator-deployment
+spec:
+  replicas: 1 #1개의 복제본으로 시작
+  selector:
+    matchLabels:
+      app: calculator
+  template:
+    metadata:
+      labels:
+        app: calculator
+      # 프로메테우스가 메트릭을 수집할 수 있도록 annotation 추가
+      annotations:
+        prometheus.io/scrape: 'true'
+        prometheus.io/port: '8000'
+        prometheus.io/path: '/metrics'
+    spec:
+      containers:
+      - name: calculator-app
+        # 중요! 이 이미지를 자신의 Docker Hub 이미지로 변경하세요.
+        image: masungil/fastapi-calculator:v1 
+        ports:
+        - containerPort: 8000
+        # HPA가 동작하기 위해 반드시 필요!
+        resources:
+          requests:
+            cpu: "100m" # 0.1 CPU Core
+            memory: "256Mi"
+          limits:
+            cpu: "400m" # 0.4 CPU Core
+            memory: "512Mi"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: calculator-service
+spec:
+  type: NodePort # NodePort 타입으로 서비스 노출
+  selector:
+    app: calculator
+  ports:
+    - protocol: TCP
+      port: 8000       # 서비스 내부 포트
+      targetPort: 8000 # 파드 포트
+--- 
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: calculator-ingress
+spec:
+  ingressClassName: nginx # 사용할 Ingress 클래스 이름
+  rules:
+  - host: "calculator.example.com" # 사용할 도메인  /etc/hosts 파일  Node의 아이피에 대한 도메인 calculator.example.com 추가해야됨  
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: calculator-service
+            port:
+              number: 8000

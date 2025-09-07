@@ -1,0 +1,18 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: my-nginx
+  namespace: dev  # <-- 여기에 'dev' 네임스페이스를 지정!
+  labels:
+    app: nginx
+spec:
+  containers:
+  - name: nginx
+    image: nginx:latest
+    ports:
+    - containerPort: 80
+
+
+# dev 네임스페이스에 Pod 배포
+# dev 네임스페이스가 생성되지 않은 상태에서 이 명령을 실행하면 오류가 발생합니다.
+

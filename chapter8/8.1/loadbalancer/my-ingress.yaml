@@ -1,0 +1,61 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: "my-ingress"
+  annotations:
+    #kubernetes.io/ingress.class: alb
+    alb.ingress.kubernetes.io/listen-ports: '[{"HTTP": 80}, {"HTTPS":443}]'
+    alb.ingress.kubernetes.io/scheme: internet-facing
+    alb.ingress.kubernetes.io/target-type: ip
+    alb.ingress.kubernetes.io/ssl-redirect: '443'
+    # 사용할 ClusterIssuer를 지정합니다.
+    cert-manager.io/cluster-issuer: "letsencrypt-prod"
+    
+
+    # Apple 서비스 경로 재작성 및 전달 액션 정의
+    alb.ingress.kubernetes.io/actions.apple-rewrite: '{"type":"forward","forwardConfig":{"targetGroups":[{"serviceName":"apple-service","servicePort":"8000"}]},"rewriteConfig":{"targetPrefix":"/"}}'
+    # Banana 서비스 경로 재작성 및 전달 액션 정의
+    alb.ingress.kubernetes.io/actions.banana-rewrite: '{"type":"forward","forwardConfig":{"targetGroups":[{"serviceName":"banana-service","servicePort":"8000"}]},"rewriteConfig":{"targetPrefix":"/"}}'
+spec:
+  ingressClassName: alb # 이 라인을 추가합니다.
+  tls:
+  - hosts:
+    - masungil.shop
+    - www.masungil.shop
+    # 인증서가 저장될 Secret의 이름을 지정합니다.
+    secretName: masungil-shop-tls
+  rules:
+  - host: masungil.shop
+    http:
+      paths:
+      - path: /apple
+        pathType: Prefix
+        backend:
+          service:
+            name: apple-rewrite # 위에서 정의한 재작성 액션의 이름
+            port:
+              name: use-annotation # 어노테이션을 사용함을 명시
+      - path: /banana
+        pathType: Prefix
+        backend:
+          service:
+            name: banana-rewrite # 위에서 정의한 재작성 액션의 이름
+            port:
+              name: use-annotation # 어노테이션을 사용함을 명시
+  - host: www.masungil.shop
+    http:
+      paths:
+      - path: /apple
+        pathType: Prefix
+        backend:
+          service:
+            name: apple-rewrite # 위에서 정의한 재작성 액션의 이름
+            port:
+              name: use-annotation # 어노테이션을 사용함을 명시
+      - path: /banana
+        pathType: Prefix
+        backend:
+          service:
+            name: banana-rewrite # 위에서 정의한 재작성 액션의 이름
+            port:
+              name: use-annotation # 어노테이션을 사용함을 명시

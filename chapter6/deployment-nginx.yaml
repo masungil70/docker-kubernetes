@@ -1,0 +1,63 @@
+apiVersion: apps/v1
+
+# 생성할 리소스의 종류를 'Deployment' 지정합니다
+kind: Deployment
+
+# 리소스의 부가 정보(이름, 레이블 등)를 정의하는 부분입니다.
+metadata:
+  # 이 디플로이먼트의 고유한 이름입니다.
+  name: my-nginx-deployment
+
+# 리소스의 '원하는 상태(Desired State)'를 상세하게 기술하는 부분입니다.
+spec:
+  # 이 디플로이먼트가 관리할 파드의 복제본 개수를 3개로 지정합니다.
+  # 이 설정은 디플로이먼트가 생성하는 레플리카셋으로 전달됩니다.
+  replicas: 3
+
+  # 디플로이먼트가 어떤 파드를 자신의 관리 대상으로 삼을지 결정하는 '선택자'입니다.
+  selector:
+    matchLabels:
+      # 'app'이라는 키에 'my-nginx'라는 값을 가진 레이블이 붙은 파드들을 관리합니다.
+      app: my-nginx
+
+  #########################################################################################
+  # 이 template의 내용이 변경되면, 디플로이먼트는 '롤링 업데이트'를 시작합니다.
+  template:
+    # 여기서부터는 생성될 파드의 'metadata'입니다.
+    metadata:
+      # 생성될 파드의 이름입니다. (실제로는 레플리카셋이 고유한 이름을 붙여줍니다)
+      name: my-nginx-pod
+      # 생성될 파드에 붙여줄 레이블입니다.
+      # 중요 : ★★★ 이 레이블은 반드시 위 selector의 matchLabels와 일치해야 합니다. ★★★
+      labels:
+        app: my-nginx
+    # 여기서부터는 생성될 파드의 'spec'입니다.
+    spec:
+      containers:
+      - name: nginx
+        # 컨테이너를 생성할 도커 이미지입니다. nginx의 1.10 버전을 사용하도록 지정했습니다.
+        image: nginx:1.10
+        ports:
+        - containerPort: 80
+
+#디플로이먼트 시작
+#kubectl apply -f deployment-nginx.yaml
+
+#디플로이먼트 상세 정보 확인
+#kubectl get deployment my-nginx-deployment
+#kubectl get deploy  my-nginx-deployment
+
+#레플리카셋 목록을 확인할 때
+#kubectl get rs -l app=my-nginx
+
+#파드 목록을 확인할 때
+#kubectl get pods -l app=my-nginx
+
+#디플로이먼트 삭제
+#kubectl delete deployment my-nginx-deployment
+
+
+#디플로이먼트 시작 (1.32 삭제 예제)
+#kubectl apply -f deployment-nginx.yaml --record
+
+#kubectl set image deployment my-nginx-deployment nginx=nginx:1.11 --record

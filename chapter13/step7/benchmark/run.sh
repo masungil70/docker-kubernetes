@@ -1,0 +1,1 @@
+ docker run --rm masungil/fastapi-benchmark:latest http://10.104.92.74

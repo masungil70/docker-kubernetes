@@ -1,0 +1,16 @@
+# ---  문서 시작 ---
+# 기본적인 맵
+user:
+  name: "홍길동"
+  age: 30
+  is_active: true
+
+# 중첩된 맵 (맵 안의 맵)
+server_config:
+  host: "127.0.0.1"
+  port: 8080
+  database:
+    type: "PostgreSQL"
+    host: "db.example.com"
+    port: 5432
+# --- 문서의 끝 ---

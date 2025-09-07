@@ -1,0 +1,9 @@
+FROM python:3.9-slim
+WORKDIR /app
+COPY app.py .
+
+# docker stop 시 SIGINT 시그널을 보내도록 설정
+STOPSIGNAL SIGINT
+
+CMD ["python", "-u", "app.py"]
+

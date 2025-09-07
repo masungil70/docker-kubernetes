@@ -1,0 +1,21 @@
+# 이 YAML 파일은 Pod를 정의합니다.
+# 이 Pod는 LimitRange의 'maxLimitRequestRatio' 설정을 테스트하기 위해 사용됩니다.
+# 이 설정은 Limit과 Request의 비율을 제한합니다.
+# 예를 들어, 메모리의 Limit(200Mi)이 Request(100Mi)의 2배이므로, 비율은 2입니다.
+# 만약 네임스페이스에 적용된 LimitRange의 비율 제한이 2보다 작다면 이 Pod는 생성될 수 없습니다.
+apiVersion: v1
+kind: Pod
+metadata:
+  name: limitrange-ratio-pod
+spec:
+  containers:
+  - name: nginx
+    image: nginx
+    resources:
+      requests:
+        cpu: "100m"
+        memory: "100Mi"
+      limits:
+        cpu: "100m"
+        # memory.limits / memory.requests = 200 / 100 = 2
+        memory: "200Mi"

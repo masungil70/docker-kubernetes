@@ -1,0 +1,12 @@
+# backend-api-service.yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: backend-api # 프론트엔드가 호출할 고정된 이름
+spec:
+  selector:
+    app: backend-api # 'app: backend-api' 라벨을 가진 파드를 찾음
+  ports:
+    - protocol: TCP
+      port: 80 # 서비스는 80번 포트로 요청을 받음
+      targetPort: 80 # 받은 요청을 파드의 8000 포트로 전달

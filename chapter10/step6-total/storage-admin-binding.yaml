@@ -1,0 +1,19 @@
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  # ClusterRoleBinding에도 namespace 필드가 없습니다.
+  name: bind-storage-admin-to-user
+  namespace: development
+subjects:
+  # 이 권한을 부여받을 대상들을 지정합니다.
+- kind: User
+  name: dev-user # 권한을 받을 사용자 이름
+  apiGroup: rbac.authorization.k8s.io
+- kind: User
+  name: dev-user2 # 권한을 받을 사용자 이름
+  apiGroup: rbac.authorization.k8s.io
+roleRef:
+  # 연결할 역할을 지정합니다.
+  kind: ClusterRole # 반드시 ClusterRole을 참조해야 합니다.
+  name: storage-admin # 1단계에서 만든 ClusterRole의 이름
+  apiGroup: rbac.authorization.k8s.io

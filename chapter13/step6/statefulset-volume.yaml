@@ -1,0 +1,82 @@
+# StatefulSet 오브젝트 정의. 애플리케이션의 상태(데이터 등)를 유지해야 할 때 사용합니다.
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  # 이 StatefulSet의 이름입니다.
+  name: statefulset-volume
+spec:
+  # Pod들의 고유한 네트워크 식별자(DNS 주소)를 생성하기 위해 연결할 Headless Service의 이름입니다.
+  # 아래에 정의된 Service의 이름과 반드시 일치해야 합니다.
+  serviceName: statefulset-volume-service
+  
+  # 이 StatefulSet이 관리할 Pod를 선택하기 위한 레이블 셀렉터입니다.
+  # template.metadata.labels에 정의된 레이블과 일치해야 합니다.
+  selector:
+    matchLabels:
+      name: statefulset-volume-example
+      
+  # 생성할 Pod의 개수(복제본 수)입니다. 각 Pod는 순서가 있는 고유한 이름을 갖게 됩니다 (예: statefulset-volume-0, -1, -2).
+  replicas: 3
+  
+  # StatefulSet이 생성할 Pod의 명세(설계도)입니다.
+  template:
+    metadata:
+      # Pod에 부착될 레이블입니다. 위 selector의 matchLabels와 일치해야 합니다.
+      labels:
+        name: statefulset-volume-example
+    spec:
+      containers:
+      - name: statefulset-volume-example
+        image: nginx
+        ports:
+        - containerPort: 80
+          name: web
+        # 컨테이너 내부에 마운트할 볼륨을 지정합니다.
+        volumeMounts:
+        # 마운트할 볼륨의 이름입니다. 아래 volumeClaimTemplates에 정의된 이름과 일치해야 합니다.
+        - name: webserver-files
+          # 컨테이너 내부에서 볼륨이 연결될 경로입니다.
+          mountPath: /usr/share/nginx/html
+          
+  # PersistentVolumeClaim(PVC)을 동적으로 생성하기 위한 템플릿입니다.
+  # StatefulSet은 이 템플릿을 사용해 각 Pod를 위한 고유한 PVC를 자동으로 생성합니다.
+  # 결과적으로 각 Pod는 자신만의 독립적인 PersistentVolume(PV)을 갖게 되어 상태를 저장할 수 있습니다.
+  volumeClaimTemplates:
+  - metadata:
+      # 생성될 PVC의 이름이자, 위 volumeMounts에서 참조하는 이름입니다.
+      # 실제 생성 시에는 "webserver-files-<Pod이름>" 형식의 이름이 됩니다 (예: webserver-files-statefulset-volume-0).
+      name: webserver-files
+    spec:
+      # 볼륨의 접근 모드를 설정합니다.
+      # "ReadWriteOnce"는 단일 노드(Node)에서만 볼륨을 읽고 쓸 수 있도록 마운트하는 것을 의미합니다.
+      accessModes: ["ReadWriteOnce"]
+      
+      # 사용할 스토리지의 종류를 정의하는 StorageClass의 이름입니다.
+      # 클러스터에 미리 정의된 StorageClass 중 하나를 선택해야 합니다.
+      storageClassName: local-path
+      
+      # 볼륨에 필요한 리소스 양을 설정합니다.
+      resources:
+        requests:
+          # 요청할 스토리지의 크기입니다. 여기서는 100메가바이트(MiB)를 요청합니다.
+          storage: 100Mi
+---
+# Headless Service 오브젝트 정의. Pod들에게 고유하고 안정적인 DNS 이름을 제공하는 역할을 합니다.
+apiVersion: v1
+kind: Service
+metadata:
+  # 이 Service의 이름입니다. 위의 StatefulSet의 serviceName과 일치해야 합니다.
+  name: statefulset-volume-service
+spec:
+  ports:
+    - port: 80
+      name: web
+      
+  # clusterIP를 "None"으로 설정하여 이 Service를 Headless Service로 만듭니다.
+  # Headless Service는 자체의 IP 주소를 갖지 않고, 대신 selector로 선택된 Pod들의 IP 주소를 직접 DNS에 등록합니다.
+  clusterIP: None
+  
+  # 이 Service가 연결될 Pod를 선택하기 위한 레이블 셀렉터입니다.
+  # StatefulSet의 template.metadata.labels에 정의된 레이블과 일치해야 합니다.
+  selector:
+    name: statefulset-volume-example

@@ -1,0 +1,58 @@
+# 1. ServiceAccount: 파드가 사용할 로봇 계정
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: storage-pod-sa
+  namespace: development
+---
+# 2. ClusterRoleBinding: storage-admin 역할을 위 ServiceAccount에 부여
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: bind-storage-admin-to-sa
+subjects:
+- kind: ServiceAccount
+  name: storage-pod-sa   # 1번에서 만든 ServiceAccount 이름
+  namespace: development    # ServiceAccount가 있는 네임스페이스
+roleRef:
+  kind: ClusterRole
+  name: storage-admin   # 이전에 만든 storage-admin ClusterRole
+  apiGroup: rbac.authorization.k8s.io
+---
+# 3. Deployment: 위 ServiceAccount를 사용하는 파드를 생성
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: storage-admin-deployment
+  namespace: development
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: storage-admin
+  template:
+    metadata:
+      labels:
+        app: storage-admin
+    spec:
+      # 이 파드가 storage-pod-sa ServiceAccount의 권한을 사용하도록 지정합니다.
+      serviceAccountName: storage-pod-sa
+      containers:
+      - name: kubectl-container
+        image: bitnami/kubectl:latest # kubectl이 설치된 이미지 사용
+        # 파드가 바로 종료되지 않도록 무한 대기 명령을 실행합니다.
+        command: ["/bin/sh", "-c", "sleep infinity"]
+---
+# 4. Service: 디플로이먼트를 위한 네트워크 서비스 
+apiVersion: v1
+kind: Service
+metadata:
+  name: storage-admin-service
+  namespace: development
+spec:
+  selector:
+    app: storage-admin
+  ports:
+  - protocol: TCP
+    port: 80
+    targetPort: 80 # 실제 파드에 열린 포트가 없으므로 의미는 없음

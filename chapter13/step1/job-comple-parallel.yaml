@@ -1,0 +1,18 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: job-comple-parallel
+spec:
+  # Job의 최종 목표: 총 8개의 파드를 성공적으로 완료시키는 것입니다.
+  completions: 8
+  # 병렬성: 동시에 최대 2개의 파드를 실행합니다.
+  # 즉, 2개씩 파드를 병렬로 실행하고, 완료되는 파드가 생기면 새로운 파드를 실행하는 방식으로
+  # 총 8개의 파드가 성공적으로 완료될 때까지 작업을 계속합니다.
+  parallelism: 2
+  template:
+    spec:
+      restartPolicy: Never
+      containers:
+      - image: busybox
+        args: ["sh", "-c", "echo Hello, World && exit 0"]
+        name: job-comple-parallel

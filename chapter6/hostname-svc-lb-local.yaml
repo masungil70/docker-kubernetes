@@ -1,0 +1,20 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: hostname-svc-lb-local
+spec:
+  externalTrafficPolicy: Local
+  ports:
+    - name: web-port
+      port: 80
+      targetPort: 8000
+  selector:
+    app: webserver
+  type: LoadBalancer
+
+# 가장 중요한 설정은 externalTrafficPolicy: Local 입니다. 이 설정은 다음과 같은 동작을 보장합니다.
+#
+# 클라이언트 소스 IP 보존: 외부에서 들어온 트래픽이 파드에 도달할 때, 출발지 IP 주소(Source IP)가 요청을 보낸
+# 클라이언트의 원래 IP로 유지됩니다.
+# 트래픽 제한: 로드 밸런서는 트래픽을 수신한 노드(Node)에 실행 중인 파드에게만 트래픽을 전달합니다. 만약 해당 노드에
+# 대상 파드가 없으면 트래픽은 전달되지 않습니다.

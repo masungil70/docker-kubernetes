@@ -1,0 +1,37 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: my-nginx-pod
+  labels:
+    app: my-nginx-pods-label
+spec:
+  containers:
+  - name: my-nginx-container
+    image: nginx:latest
+    ports:
+    - containerPort: 80
+
+# 레플리카셋 없이 단일 파드를 생성할 때
+#kubectl apply -f nginx-pod-without-rs.yaml
+
+#레플리카셋을 사용하여 다중 파드를 생성할 때
+#kubectl apply -f replicaset-nginx.yaml
+
+#생성파드 목록을 확인할 때 레이블 컬럼 출력
+#kubectl get pods -l app=my-nginx-pods-label --show-labels 
+
+# 파드의 수정하기
+#kubectl edit pod my-nginx-pod
+#레이블을 삭제합니다 
+#  labels:
+#    app: my-nginx-pods-label
+
+#파드 목록을 확인할 때 레이블 컬럼 출력하여 확인 
+#kubectl get pods --show-labels 
+
+#레이블이 삭제된 파드는 레플리카셋에 의해 관리되지 않으므로, 레플리카셋이 파드를 재생성합니다.
+#레플리카셋을 삭제해도 파드는 계속 존재합니다.
+#kubectl delete rs my-nginx-replicaset
+
+#파드 목록을 확인할 때 레이블 컬럼 출력하여 확인 
+#kubectl get pods --show-labels 

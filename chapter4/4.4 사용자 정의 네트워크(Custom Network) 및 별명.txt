@@ -1,0 +1,146 @@
+사용자 정의 네트워크(Custom Network)를 생성 및 네트워크 별명 예제 
+
+  Docker Compose의 사용자 정의 네트워크(Custom Network)를 생성하고, 각 서비스에
+  네트워크 별명(Alias)을 부여하는 방식을 알아보겠습니다 
+
+  사용자 정의 네트워크와 별명을 사용하는 이유 
+
+   * 네트워크 격리 (Network Isolation): Docker Compose는 기본적으로 프로젝트마다 브릿지(bridge) 네트워크를
+     생성하여 서비스들을 연결합니다. 하지만 networks 섹션을 통해 직접 네트워크를 정의하면, 어떤 서비스가
+     어떤 네트워크에 속할지 명시적으로 제어할 수 있습니다. 이를 통해 컨테이너들의 통신 범위를 제한하고
+     애플리케이션의 보안과 구조를 더 체계적으로 관리할 수 있습니다. 예를 들어, 데이터베이스는 내부
+     네트워크에만 존재하게 하고, 웹 서버만 외부와 연결된 네트워크에 접근하도록 구성할 수 있습니다.
+
+   * 서비스 이름과 연결 주소 분리 (Decoupling): 지금까지는 app.py에서 Redis에 접속할 때 host='redis'처럼
+     docker-compose.yml에 정의된 서비스 이름(redis)을 그대로 사용했습니다. 하지만 네트워크 별명(aliases)을
+     사용하면 서비스 이름과 실제 코드에서 사용하는 연결 주소(호스트명)를 분리할 수 있습니다.
+       * 유연성: 서비스 이름을 redis-primary 등으로 변경하더라도, 코드에서는 별명(redis-db)을 그대로
+         사용하면 되므로 코드 수정이 필요 없습니다.
+       * 가독성: redis-db, fastapi-app처럼 역할에 맞는 별명을 부여하여 코드의 가독성을 높일 수 있습니다.
+
+  1. 이전 작업 폴더를 복사합니다 
+    cp -r ~/visit-counter-nginx ~/visit-counter-nginx-network  
+    cd ~/visit-counter-nginx-network 
+    
+  1. docker-compose.yml 파일에 아래의 것을 수정합니다 
+
+   1. `networks` 섹션 추가: 파일 최하단에 visit-counter-net이라는 이름의 새로운 브릿지(bridge) 네트워크를 정의합니다.
+   2. 각 서비스에 네트워크 할당: nginx, web, redis 서비스가 모두 visit-counter-net 네트워크를 사용하도록
+      networks 항목을 추가합니다.
+   3. 별명(aliases) 추가:
+       * web 서비스에는 fastapi-app이라는 별명을 부여합니다.
+       * redis 서비스에는 redis-db라는 별명을 부여합니다.
+
+ vi docker-compose.yml
+services:
+  nginx:
+    image: nginx:latest
+    ports:
+      - "8000:80"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf
+    depends_on:
+      - web
+    networks:
+      - visit-counter-net
+
+  web:
+    build: .
+    depends_on:
+      - redis
+    networks:
+      visit-counter-net:
+        aliases:
+          - fastapi-app
+
+  redis:
+    image: "redis:alpine"
+    networks:
+      visit-counter-net:
+        aliases:
+          - redis-db
+
+# 사용자 정의 네트워크를 생성합니다.
+networks:
+  visit-counter-net:
+    driver: bridge
+
+  2. app.py 수정
+
+  먼저 app.py 파일에서 Redis에 접속하는 호스트 이름을 서비스 이름(redis) 대신 새로 지정한
+  별명(redis-db)으로 변경하겠습니다.
+
+vi app.py
+
+from fastapi import FastAPI
+from redis import Redis
+
+app = FastAPI()
+#redis = Redis(host='redis', port=6379)
+redis = Redis(host='redis-db', port=6379)
+
+@app.get("/")
+def read_root():
+    count = redis.incr('hits')
+    return {"message": f"This page has been visited {count} times."}
+    
+  3. nginx.conf 수정
+
+vi nginx.conf
+
+events {}
+
+http {
+    upstream backend {
+        server fastapi-app:80;
+    }
+
+    server {
+        listen 80;
+
+        location / {
+            proxy_pass http://backend;
+            proxy_set_header Host $host;
+            proxy_set_header X-Real-IP $remote_addr;
+            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+            proxy_set_header X-Forwarded-Proto $scheme;
+        }
+    }
+}
+
+  모든 파일(docker-compose.yml, app.py, nginx.conf)의 수정이 완료되었습니다.
+
+  최종 정리
+
+  변경 사항 요약
+
+   * `docker-compose.yml`:
+       * 파일 하단에 visit-counter-net이라는 이름의 사용자 정의 네트워크를 추가했습니다.
+       * nginx, web, redis 세 개의 모든 서비스가 이 visit-counter-net에 속하도록 설정했습니다.
+       * web 서비스에는 fastapi-app이라는 네트워크 별명을, redis 서비스에는 redis-db라는 별명을
+         부여했습니다.
+
+   * `app.py`:
+       * Redis 데이터베이스에 접속하기 위한 호스트(host) 이름을 기존의 서비스명(redis) 대신 새로운 별명인
+         redis-db로 변경했습니다.
+
+   * `nginx.conf`:
+       * Nginx가 요청을 전달할 백엔드 서비스의 주소를 기존의 서비스명(web) 대신 새로운 별명인
+         fastapi-app으로 변경했습니다.
+
+  실행 방법
+
+  이제 모든 변경사항이 적용된 애플리케이션을 실행해 보겠습니다.
+
+   1. Docker Compose로 애플리케이션을 다시 빌드하고 실행합니다.
+
+      docker compose up -d --build
+       * docker-compose.yml과 app.py 등 소스 코드가 변경되었으므로, --build 옵션을 사용하여 web 서비스의
+         이미지를 새로 만들어야 합니다.
+       * 이 명령어를 실행하면 Docker는 먼저 visit-counter-net이라는 네트워크를 생성한 후, 세 개의 컨테이너를
+         생성하여 이 네트워크에 연결합니다.
+
+   3. 웹 브라우저에서 확인합니다.
+       * 주소창에 http://localhost:8000을 입력하고 접속합니다.
+       * 이전과 완벽하게 동일하게 방문 횟수 카운터가 작동하는 것을 볼 수 있습니다.
+

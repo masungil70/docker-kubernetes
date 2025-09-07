@@ -1,0 +1,11 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: statefulset-svc # StatefulSet이 Pod의 DNS 이름을 만들기 위해 사용하는 Headless Service
+spec:
+  clusterIP: None # Headless Service로 설정
+  selector:
+    app: pod-nginx
+  ports:
+    - name: web
+      port: 80

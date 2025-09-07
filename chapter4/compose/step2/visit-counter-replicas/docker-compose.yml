@@ -1,0 +1,35 @@
+services:
+  nginx:
+    image: nginx:latest
+    ports:
+      - "8000:80"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf
+    depends_on:
+      - web
+    networks:
+      - visit-counter-net
+
+  web:
+    build: .
+    deploy:
+      replicas: 3
+    depends_on:
+      - redis
+    networks:
+      visit-counter-net:
+        aliases:
+          - fastapi-app
+
+  redis:
+    image: "redis:alpine"
+    networks:
+      visit-counter-net:
+        aliases:
+          - redis-db
+
+# 사용자 정의 네트워크를 생성합니다.
+networks:
+  visit-counter-net:
+    driver: bridge
+

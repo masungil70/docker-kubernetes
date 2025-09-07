@@ -1,0 +1,18 @@
+# 이 YAML 파일은 Liveness Probe를 사용하는 파드를 정의합니다.
+apiVersion: v1
+kind: Pod
+metadata:
+  name: livenessprobe-pod
+spec:
+  containers:
+  - name: livenessprobe-pod
+    image: nginx
+    # livenessProbe는 컨테이너가 살아있는지(running)를 검사합니다.
+    # 검사에 실패하면, kubelet은 컨테이너를 재시작합니다.
+    livenessProbe:
+      # httpGet은 HTTP GET 요청을 보내 애플리케이션의 상태를 확인합니다.
+      httpGet:
+        # 80번 포트의 루트 경로(/)로 헬스 체크 요청을 보냅니다.
+        # 요청에 대한 응답 코드가 200-399 사이이면 성공으로 간주합니다.
+        port: 80
+        path: /

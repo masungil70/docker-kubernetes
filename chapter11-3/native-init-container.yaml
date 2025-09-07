@@ -1,0 +1,18 @@
+# 이 YAML 파일은 네이티브 사이드카 컨테이너(Native Sidecar Container) 예제를 보여줍니다.
+# 이 기능은 쿠버네티스 특정 버전 이상에서만 지원될 수 있습니다.
+apiVersion: v1
+kind: Pod
+metadata:
+  name: native-sidecar-example
+spec:
+  containers:
+  - name: nginx
+    image: nginx
+  initContainers:
+  - name: my-native-sidecar-container
+    image: busybox
+    # "tail -f /dev/null" 명령어는 컨테이너가 종료되지 않고 계속 실행되도록 합니다.
+    command: ['sh', '-c', 'tail -f /dev/null']
+    # restartPolicy: Always를 initContainer에 설정하면, 해당 컨테이너는 사이드카 컨테이너처럼 동작합니다.
+    # 즉, 메인 컨테이너와 함께 실행되며, 실패 시 재시작될 수 있습니다.
+    restartPolicy: Always

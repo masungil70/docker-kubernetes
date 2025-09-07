@@ -1,0 +1,23 @@
+# Job API 버전 (batch/v1)
+apiVersion: batch/v1
+# 리소스의 종류를 정의합니다. 여기서는 Job 입니다.
+kind: Job
+metadata:
+  # Job의 고유한 이름
+  name: job-hello-world
+spec:
+  # Job이 생성하고 관리할 파드(Pod)의 명세를 정의하는 템플릿
+  template:
+    spec:
+      # 파드 내 컨테이너가 실패했을 때의 재시작 정책입니다.
+      # Job에서는 Never 또는 OnFailure만 사용할 수 있습니다.
+      # Never: 실패 시 파드를 재시작하지 않고 바로 실패로 처리합니다. Job 컨트롤러가 새 파드를 만듭니다.
+      restartPolicy: Never
+      containers:
+      # 사용할 컨테이너 이미지
+      - image: busybox
+        # 컨테이너가 실행할 명령어와 인자입니다.
+        # "Hello, World"를 출력하고 성공적으로 종료(exit 0)합니다.
+        args: ["sh", "-c", "echo Hello, World && exit 0"]
+        # 컨테이너의 이름
+        name: job-hello-world

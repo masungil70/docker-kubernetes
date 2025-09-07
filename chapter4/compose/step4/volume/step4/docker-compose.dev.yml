@@ -1,0 +1,23 @@
+#version: '3.8'
+
+services:
+  # backend 서비스에 개발용 설정을 추가(override)합니다.
+  backend:
+    # 개발용 자동 리로드 명령어로 덮어씁니다.
+    command: sh -c "uvicorn main:app --host 0.0.0.0 --port 8000 --reload"
+
+  # nginx 서비스에 개발용 설정을 추가(override)합니다.
+  nginx:
+    volumes:
+      # Nginx 설정 파일과 프론트엔드 소스 코드를 호스트와 동기화합니다.
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./frontend:/usr/share/nginx/htm
+
+# 개발 환경용 설정 파일입니다.
+volumes:
+  mariadb_data: # MariaDB 데이터용 네임드 볼륨 이름(컨테이너에서는 이 이름으로 참조)
+    driver: local         # 로컬 볼륨 드라이버 사용 (기본값)
+    driver_opts:
+      type: none          # 마운트 타입 (none = 파일시스템 타입 미지정, 바인드에 사용)
+      o: bind             # 옵션: bind 마운트 수행
+      device: ./mariadb_data  # 호스트의 실제 경로 (여기에 데이터를 저장)

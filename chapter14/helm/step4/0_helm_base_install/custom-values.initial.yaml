@@ -1,0 +1,38 @@
+# 이 파일은 kube-prometheus-stack의 초기 설치를 위한 values.yaml 샘플입니다.
+# 설치 전에 반드시 내용을 검토하고 필요한 부분을 수정하세요.
+
+alertmanager:
+  enabled: true # Alertmanager 활성화 (기본값)
+  # Alertmanager 서비스 타입 설정 (NodePort 또는 LoadBalancer로 변경 가능)
+  service:
+    type: ClusterIP
+
+grafana:
+  enabled: true # Grafana 활성화 (기본값)
+  # Grafana 관리자 비밀번호 설정 (설정하지 않으면 임의의 비밀번호가 생성됩니다)
+  adminPassword: "1004" # <-- 여기에 원하는 비밀번호 입력
+  # Grafana 서비스 타입 설정 (NodePort 또는 LoadBalancer로 변경 가능)
+  service:
+    type: NodePort
+
+prometheus:
+  prometheusSpec:
+    # 프로메테우스 데이터 영구 저장을 위한 설정
+    storageSpec:
+      volumeClaimTemplate:
+        spec:
+          # 요청하신 'nfs' 스토리지 클래스를 사용하도록 설정
+          storageClassName: nfs # <-- 자신의 NFS StorageClass 이름으로 변경
+          accessModes: ["ReadWriteOnce"]
+          resources:
+            requests:
+              # 프로메테우스 데이터 저장 공간 크기 (필요에 따라 조절)
+              storage: 20Gi
+
+# Node Exporter 활성화 (기본값)
+nodeExporter:
+  enabled: true
+
+# Kube State Metrics 활성화 (기본값)
+kubeStateMetrics:
+  enabled: true

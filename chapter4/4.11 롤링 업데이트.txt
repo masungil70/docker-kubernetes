@@ -1,0 +1,286 @@
+롤링 업데이트란 
+
+롤링 업데이트는 서비스를 중단하지 않고 애플리케이션을 새 버전으로 점진적으로 업데이트하는 배포 전략입니다.
+
+전체 서비스를 한 번에 중단하고 업데이트하는 대신, 여러 개의 컨테이너(Replicas) 중 일부를 순차적으로 새
+버전으로 교체합니다. 이 방식 덕분에 업데이트 중에도 사용자는 서비스를 계속 이용할 수 있어 무중단
+배포(Zero-Downtime Deployment)가 가능해집니다.
+
+동작 방식:
+ 1. 새 버전의 컨테이너를 1개 (또는 지정된 개수만큼) 실행합니다.
+ 2. 새 컨테이너가 정상적으로 실행되는지 (Healthcheck를 통해) 확인합니다.
+ 3. 정상 실행이 확인되면, 구 버전의 컨테or이너를 1개 중단합니다.
+ 4. 모든 컨테이너가 새 버전으로 교체될 때까지 이 과정을 반복합니다.
+
+Docker Compose에서의 롤링 업데이트
+
+엄밀히 말해, docker-compose.yml의 deploy 섹션은 여러 서버에 컨테이너를 배포하는 Docker Swarm 모드에서
+완벽하게 동작하도록 설계되었습니다. 하지만 docker-compose up 명령어로도 deploy 섹션의 일부 기능을
+활용하여 단일 호스트에서 롤링 업데이트를 시뮬레이션할 수 있습니다.
+
+핵심은 docker-compose.yml 파일의 deploy와 healthcheck 섹션입니다.
+
+ * `deploy`: 업데이트 정책을 정의합니다.
+     * replicas: 실행할 컨테이너의 개수입니다.
+     * update_config: 업데이트 방법을 상세히 설정합니다.
+         * parallelism: 한 번에 업데이트할 컨테이너의 수입니다. (보통 1로 설정하여 순차적으로 진행)
+         * delay: 컨테이너 그룹을 업데이트하는 사이의 지연 시간입니다.
+         * order: start-first (새 컨테이너를 먼저 시작) 또는 stop-first (기존 컨테이너를 먼저 중지)를
+           지정합니다. 무중단 배포를 위해서는 start-first를 사용합니다.
+ * `healthcheck`: Docker가 컨테이너 내부의 애플리케이션이 정말 "건강한" 상태인지 확인하는 방법을
+   정의합니다. 롤링 업데이트 시 새 컨테이너가 요청을 처리할 준비가 되었는지 판단하는 중요한 기준이 됩니다.
+
+예제 : 버전 번호를 출력하는 간단한 웹 애플리케이션
+
+1. 폴더 구조 
+
+  step5/rolling-update/
+  ├── Dockerfile
+  ├── docker-compose.yml
+  ├── main.py
+  └── requirements.txt
+
+ 
+2. v1.0 애플리케이션 배포
+
+  rolling-update 디렉터리로 이동한 후, docker-compose up 명령어를 실행하여 3개의 web 서비스 컨테이너를 시작합니다.
+  
+  cd step5/rolling-update
+  docker compose up -d --build
+
+  --build 옵션으로 이미지를 빌드하고, -d로 백그라운드에서 실행합니다.
+
+3. 실행 확인 (포트 및 헬스체크)
+  
+  docker ps -a
+  
+  실행 후, docker compose ps 명령어로 3개의 컨테이너가 실행 중인지 확인하세요.
+
+4. v1.0 동작 확인 
+
+  curl http://localhost:32771
+  curl http://localhost:32772
+  curl http://localhost:32773
+
+5. 헬스체크 방법 
+ 
+  방법 1: docker compose ps로 현재 상태 확인하기 (가장 간단한 방법)
+
+  가장 간단하고 빠르게 헬스체크 상태를 보는 방법입니다. 터미널에 docker compose ps를 입력하면 STATUS 열에
+  컨테이너의 현재 상태와 함께 헬스체크 결과가 표시됩니다.
+
+   1 docker compose ps
+
+    출력 결과에서 `STATUS` 열을 확인하세요:
+
+     * (health: starting): 컨테이너가 시작되었고, 첫 헬스체크의 결과를 기다리는 중입니다. healthcheck에 설정된
+       interval + timeout 시간 동안 이 상태가 유지됩니다.
+     * (healthy): 헬스체크에 성공하여 컨테이너가 건강한 상태임을 의미합니다.
+     * (unhealthy): 헬스체크에 실패하여 컨테이너에 문제가 발생했음을 의미합니다.
+
+    CONTAINER ID   IMAGE                COMMAND                  CREATED          STATUS                    PORTS                                           NAMES
+    5e251543591b   my-fastapi-app:1.0   "uvicorn main:app --…"   14 minutes ago   Up 14 minutes (healthy)   0.0.0.0:32771->8000/tcp, [::]:32771->8000/tcp   rolling-update-web-2
+    9c310e5dc68c   my-fastapi-app:1.0   "uvicorn main:app --…"   14 minutes ago   Up 14 minutes (healthy)   0.0.0.0:32772->8000/tcp, [::]:32772->8000/tcp   rolling-update-web-1
+    baca199266ca   my-fastapi-app:1.0   "uvicorn main:app --…"   14 minutes ago   Up 14 minutes (healthy)   0.0.0.0:32773->8000/tcp, [::]:32773->8000/tcp   rolling-update-web-3
+
+
+  방법 2: docker inspect로 상세 로그 보기 (디버깅에 유용)
+
+  docker inspect 명령어는 특정 컨테이너의 모든 설정과 상태를 JSON 형식으로 아주 상세하게 보여줍니다.
+  헬스체크의 최근 결과 로그를 볼 수 있어 디버깅 시 매우 유용합니다.
+
+   1. docker compose ps로 컨테이너의 정확한 이름이나 ID를 확인합니다. (예: rolling-update-web-1)
+   2. 아래 명령어를 실행합니다.
+
+      docker inspect rolling-update-web-1
+
+   3. 출력된 JSON 내용 중 맨 아래에 있는 State.Health 부분을 확인합니다.
+
+    "Health": {
+        "Status": "healthy",
+        "FailingStreak": 0,
+        "Log": [
+            {
+                "Start": "2025-08-15T02:28:46.102098273Z",
+                "End": "2025-08-15T02:28:46.156476239Z",
+                "ExitCode": 0,
+                "Output": "  % Total    % Received % Xferd  Average Speed   Time    Time     Time  Current\n                                 Dload  Upload   Total   Spent    Left  Speed\n\r  0     0    0     0    0     0      0      0 --:--:-- --:--:-- --:--:--     0{\"status\":\"OK\"}\r100    15  100    15    0     0   6307      0 --:--:-- --:--:-- --:--:--  7500\n"
+            },
+            {
+                "Start": "2025-08-15T02:28:56.158355763Z",
+                "End": "2025-08-15T02:28:56.216760175Z",
+                "ExitCode": 0,
+                "Output": "  % Total    % Received % Xferd  Average Speed   Time    Time     Time  Current\n                                 Dload  Upload   Total   Spent    Left  Speed\n\r  0     0    0     0    0     0      0      0 --:--:-- --:--:-- --:--:--     0{\"status\":\"OK\"}\r100    15  100    15    0     0   6723      0 --:--:-- --:--:-- --:--:--  7500\n"
+            }
+        ]
+    }
+            
+  만약 헬스체크가 실패했다면 ExitCode는 0이 아닌 값이 되고, Output에는 에러 메시지가 기록되어 왜
+  실패했는지 원인을 파악하는 데 큰 도움이 됩니다.
+
+
+  방법 3: docker events로 실시간 스트림 보기 (모니터링)
+
+  docker events 명령어는 Docker 데몬에서 발생하는 모든 이벤트를 실시간으로 스트리밍하여 보여줍니다.
+  health_status 필터를 사용하면 모든 컨테이너의 헬스체크 상태 변경 이벤트를 실시간으로 모니터링할 수
+  있습니다.
+
+  새 터미널을 열고 아래 명령어를 실행해 보세요.
+
+   1 docker events --filter 'event=exec_start'
+
+  컨테이너가 시작되고 헬스체크 상태가 starting -> healthy로 바뀌거나, 문제가 생겨 healthy -> unhealthy로
+  바뀔 때마다 아래와 같은 이벤트 로그가 출력됩니다.
+
+  이 방법들을 활용하여 롤링 업데이트 중 컨테이너들의 헬스체크 상태를 명확하게 관찰하고 문제를 진단할 수
+  있습니다.
+
+
+6. v2.0으로 롤링 업데이트 수행
+
+이제 애플리케이션을 v2.0으로 업데이트하겠습니다. 
+
+vi docker-compose2.yml
+#version: '3.8'
+
+services:
+  web:
+    build: .
+    image: my-fastapi-app:2.0   #수정됨 
+    ports:
+      - "8000"
+    environment:
+      - APP_VERSION=v2.0        #수정됨 
+    deploy:
+      replicas: 3
+      update_config:
+        parallelism: 1
+        delay: 10s
+        order: start-first
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      
+   v2.0으로 롤링 업데이트 수행 합니다 
+   
+    docker compose -f docker-compose2.yml up 
+  
+  성공적으로 실행되면 아래와 같은 로그가 출력되는 것을 확인 할 수 있습니다 
+  
+  [+] Running 3/3
+   ✔ Container rolling-update-web-2  Recreated                                                  0.5s
+   ✔ Container rolling-update-web-3  Recreated                                                  0.6s
+   ✔ Container rolling-update-web-1  Recreated                                                  0.7s
+  Attaching to web-1, web-2, web-3
+  ...
+  
+7. 롤링 업데이트 실시간 확인, 컨테이너의 포트를 확인 하고 실행 해야됩니다
+
+  curl localhost:32786
+
+8. 정리하기
+
+  확인이 끝나면 아래 명령어로 모든 컨테이너와 네트워크를 깔끔하게 정리할 수 있습니다.
+
+  docker compose down
+
+9: 리버스 프록시(Nginx) 사용
+
+ * Nginx 컨테이너 (로드 밸런서): 사용자의 모든 요청을 localhost에서 받습니다.
+ * FastAPI 컨테이너들: 외부 포트를 직접 노출하지 않고, Docker 내부 네트워크를 통해서만 Nginx와 통신합니다.
+ * Nginx가 받은 요청을 내부 네트워크를 통해 여러 FastAPI 컨테이너들에게 골고루 분배(로드 밸런싱)해줍니다.
+
+  폴더 구조 
+    rolling-update-nginx
+    ├── Dockerfile
+    ├── docker-compose.yml    #수정됨 
+    ├── main.py
+    ├── nginx                 #새로 추가됨 
+    │   └── nginx.conf        #새로 추가됨 
+    └── requirements.txt
+  
+
+이 구조를 위해 docker-compose.yml을 수정하고 nginx.conf 파일을 새로 추가하겠습니다.
+
+9.1 `nginx` 디렉터리 및 `nginx.conf` 파일 생성
+
+   mkdir nginx 
+   vi nginx/nginx.conf
+#nginx.conf
+upstream backend {
+    # web은 docker-compose.yml에 정의된 FastAPI 서비스의 이름입니다.
+    # Docker가 이 이름으로 실행 중인 컨테이너들의 내부 IP를 찾아 연결해줍니다.
+    server web:8000;
+}
+
+server {
+    listen 80;
+
+    location / {
+        proxy_pass http://backend;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    }
+
+}
+
+   
+9.2 `docker-compose.yml` 파일 수정
+
+ * web 서비스: ports 섹션을 완전히 제거하여 외부 노출을 막습니다.
+ * nginx 서비스: 새로 추가합니다. 호스트의 80번 포트를 Nginx 컨테이너의 80번 포트와 연결하고, 방금 만든
+   nginx.conf 파일을 마운트합니다.
+
+vi docker-compose.yml
+#docker-compose.yml
+#version: '3.8'
+
+services:
+  web:
+    build: .
+    image: my-fastapi-app:1.0
+    environment:
+      - APP_VERSION=v1.0
+    deploy:
+      replicas: 3
+      update_config:
+        parallelism: 1
+        delay: 10s
+        order: start-first
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/healthz"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+  
+  nginx:
+    image: nginx:alpine
+    ports:
+      - "80:80" 
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/conf.d/default.conf
+    depends_on:
+      - web
+
+  이제 Nginx를 이용한 새로운 방식으로 롤링 업데이트를 실행할 수 있습니다. 
+  실제 운영 환경과 매우 유사하게 동작합니다.
+
+9.2 v1.0 애플리케이션 스택 시작
+
+  # Dockerfile을 새로 빌드하고, web과 nginx 서비스를 백그라운드에서 실행합니다.
+  docker compose up --build -d
+  
+  docker compose ps를 실행해 보면 web 컨테이너 3개와 nginx 컨테이너 1개가 실행 중인 것을 볼 수 있습니다.
+
+9.3. v1.0 동작 확인
+
+  이제 사용자는 Nginx가 노출된 80번 포트로만 접속하면 됩니다. 새 터미널에서 아래 curl 반복문을 실행하세요. 
+  Nginx가 알아서 3개의 v1.0 web 컨테이너 중 하나로 요청을 전달해 줄 것입니다.
+
+  curl http://localhost
+
+9.4. v2.0으로 롤링 업데이트 수행
+  이전과 동일하게 실행하시면 됩니다 

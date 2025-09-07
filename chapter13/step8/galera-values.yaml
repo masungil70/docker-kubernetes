@@ -1,0 +1,52 @@
+
+# galera-values.yaml
+# bitnami/mariadb-galera Helm 차트 설정 파일
+
+# Galera 클러스터의 복제본 수 (노드 수)
+replicaCount: 3
+
+# MariaDB 루트 사용자 설정
+rootUser:
+  # 루트 사용자 비밀번호. 실제 운영 환경에서는 더 강력한 비밀번호를 사용하거나
+  # 기존 Secret을 참조하는 것이 좋습니다.
+  password: "root_password"
+
+# MariaDB 데이터베이스 설정
+db:
+  # 생성할 데이터베이스 이름
+  name: kosa_db
+  # 생성할 사용자 이름
+  user: kosa
+  # 생성할 사용자의 비밀번호
+  password: "1004"
+
+# Galera 클러스터 설정
+galera:
+  # 클러스터 이름
+  name: kosa-galera-cluster
+  # SST(State Snapshot Transfer)를 위한 복제 사용자. Helm 차트가 자동으로 관리합니다.
+  replication:
+    user: repl_user
+    password: "repl_password"
+
+# 초기화 스크립트 설정
+# 차트가 배포될 때 한 번만 실행되어 데이터베이스 스키마 등을 초기화합니다.
+initdbScripts:
+  # 스크립트 파일 이름 (key)과 내용 (value)
+  init_schema.sql: |
+    CREATE TABLE IF NOT EXISTS kosa_db.items (
+      id INT AUTO_INCREMENT PRIMARY KEY,
+      name VARCHAR(255) NOT NULL
+    ) ENGINE=InnoDB;
+
+# 퍼시스턴스(스토리지) 설정
+persistence:
+  # 퍼시스턴스 활성화
+  enabled: true
+  # 사용할 스토리지 클래스 이름
+  storageClass: "local-path"
+  # 각 Pod에 할당할 스토리지 용량
+  size: 1Gi
+
+# 아키텍처를 'replication' 대신 'galera'로 명시적으로 설정
+architecture: galera

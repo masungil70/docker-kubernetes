@@ -1,0 +1,24 @@
+# ---  문서 시작 ---
+# 사용자 프로필 (주석)
+# 사용자 기본 정보 (키-값 쌍)
+user_id: 12345
+user_name: "김철수"
+is_active: true
+# 주소 정보 (들여쓰기를 이용한 계층 구조)
+address:
+  city: "부산"
+  zip_code: "48053"
+# 수강한 강의 목록 (리스트)
+courses_taken:
+  - "데이터베이스 입문"
+  - "웹 프로그래밍 기초"
+# 보유 기술 스택 (객체를 포함하는 리스트)
+# 각 기술은 이름과 숙련도를 가집니다.
+tech_stack:
+  - name: Docker
+    proficiency: 80
+  - name: Kubernetes
+    proficiency: 65
+  - name: Python
+    proficiency: 95
+# --- 문서의 끝 ---

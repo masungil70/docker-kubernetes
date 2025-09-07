@@ -1,0 +1,9 @@
+# 프로그래밍 능력
+skills:
+  - language: Python
+    level: expert
+  - language: JavaScript
+    level: intermediate
+  - language: SQL
+    level: beginner
+# --- 문서의 끝 ---

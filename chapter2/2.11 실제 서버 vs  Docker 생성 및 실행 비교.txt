@@ -1,0 +1,115 @@
+실습 목적
+  실제 서버와 Docker 의 차이점을 확인 하기 위함 
+  점검 항목 
+     1. 각각 서버를 구성하는데 사용되는 시간 
+     2. 웹 서버 설치 절차 
+     3. 웹 서버 구성 절차 
+     
+1. 웹 서버 1개를 운영하기 위해 새롭게 시스템을 구축해 본다
+  1. vmware에 새로운 가상 머신을 1개 생성한다 
+     cpu : 1,
+     ram : 2G
+     hdd : 20G
+     설치 운영체제 : ubuntu 24.04 
+     계정 : kosa
+     비밀번호 : 1004 
+     서버이름 : webserver
+     
+  2. 새로운 가성머신의 IP를 확인 한다 
+     
+  3. 윈도우에서 원격 ssh로 접속 
+     ssh kosa@서버IP 
+     
+  4. 운영체제 저장소를 업데이트를 한다 
+     sudo apt-get update 
+     
+  5. 아파치 웹서버를 설치한다 
+    sudo apt-get install apache2 -y 
+
+  6. 웹 문서(test.html) 문서를 생성한다 
+     sudo echo test > /var/www/html/test.html
+     
+  7. 웹 문서(test.html) 폴더로 변경 
+     cd /var/www/html
+
+  8. 웹 문서(test2.html) 문서를 생성한다 
+     sudo echo hello > test2.html
+     
+  9. 윈도우 브라우저를 실행하고 webserver의 주소로 접속하여 test.html, test2.html 문서를 요청한다 
+
+---------------------------------------------------------------------------
+2. 기존에 사용한 host 서버를 사용하여 작업한다.
+   Dockerfile을 사용하여 웹 서버 이미지를 생성해본다 
+   
+  1. 작업할 폴더를 생성하고 생성된 폴더로 경로를 이동한다  
+  mkdir dockerfile && cd dockerfile 
+  
+  2. 웹서버에서 사용할 문서(test.html)를 생성한다 
+  echo Hello World > test.html
+  
+  3. Dockerfile 를 vi 편집기를 사용하여 생성한다
+  vi Dockerfile
+  FROM ubuntu:24.04
+  LABEL "purpose"="practrice"
+  RUN apt-get update
+  RUN apt-get install apache2 -y 
+  ADD test.html /var/www/html
+  WORKDIR /var/www/html
+  RUN ["/bin/bash", "-c", "echo hello >> test2.html"]
+  EXPOSE 80
+  CMD ["apachectl", "-DFOREGROUND"]
+  
+  4. Dockerfile 파일을 빌드 -> docker 이미지 생성
+  docker build -t mybuild:0.0 .
+  
+  5. 생성된 docker 이미지 목록을 확인한다( mybuild 이미지 확인)
+  docker images 
+  
+  6. 생성된 docker 이미지를 실행 하여 컨테이너화 한다 
+  docker run -d -P --name myserver mybuild:0.0
+  
+  7. 실행되는 컨테이너의 port를 확인한다 
+  docker port myserver
+  
+  8. 윈도우에서 브라우저를 실행하고 webserver의 주소로 접속하여 test.html, test2.html 문서를 요청한다
+  예 hostip : 192.168.1.3, port : 32768
+  http://192.168.1.3:32768/test.html
+  http://192.168.1.3:32768/test2.html
+  
+  9. mybuild:0.0의 이미지의 상세 정보를 확인한다(layers 확인) 
+  각 레이어는 Dockerfile의 각 구문과 연결된다 
+  docker inspect mybuild:0.0
+  
+  10. 캐시를 이용한 이미지 빌드(Dockerfile 파일의 일부만 사용하여 Dockerfile2 생성)
+      
+  vi Dockerfile2
+  FROM ubuntu:24.04
+  LABEL "purpose"="practrice"
+  RUN apt-get update
+  
+  11. Dockderfile명이 아닌 다른 파일을 빌드 하는 방법 (매우 빠른 빌드 속도, CACHED 로그 확인한다)
+  docker build -f Dockerfile2 -t mycache:0.0  .
+  
+  12. 캐시를 사용하지 이미지 빌드한 방법 
+  docker build --no-cache -t mybuild:0.0  .
+
+  13. nginx 이미지를 캐싱하여 새로운 이미지를 생성하는 방법 
+    #index.html 문서 생성 
+    echo Ningx 캐싱으로 사용하여 이미지 생성 > index.html
+  
+    #vi를 사용하여 nginx 이미지를 캐싱 하는 Dockerfile3 파일 생성 
+    vi Dockerfile3
+    # 1. 베이스 이미지 지정 공식 Nginx 이미지를 베이스로 사용합니다.
+    # --cache-from nginx 옵션은 바로 이 FROM 명령어에서 캐시를 찾으려고 시도합니다.
+    FROM nginx:latest
+
+    # 2. 새로운 레이어 추가 우리만의 커스텀 파일을 Nginx의 기본 웹 루트 디렉토리에 복사합니다.
+    # 이 COPY 명령어는 베이스 이미지 위에 새로운 레이어를 생성합니다.
+    COPY index.html /usr/share/nginx/html/index.html
+    
+    # 3. --cache-from 을 사용하지 않고 이미지 빌드 (CACHED 로그 확인한다)
+    docker build -f Dockerfile3 -t my_extend_nginx:0.0 .
+    
+    # 4. --cache-from 을 사용하고 이미지 빌드 (CACHED 로그 확인한다)
+    docker build --cache-from nginx -f Dockerfile3 -t my_extend_nginx:0.0 .
+  

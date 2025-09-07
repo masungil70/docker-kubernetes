@@ -1,0 +1,39 @@
+# --- Deployment --- #
+# apiVersion: 쿠버네티스 API 버전. apps/v1은 Deployment, ReplicaSet, StatefulSet 등을 관리합니다.
+apiVersion: apps/v1
+# kind: 리소스의 종류. 여기서는 'Deployment'를 생성합니다.
+kind: Deployment
+# metadata: 이름, 레이블 등 리소스를 식별하기 위한 정보입니다.
+metadata:
+  name: php-apache # 이 Deployment의 고유한 이름
+# spec: 리소스의 상세한 상태를 정의하는 부분입니다.
+spec:
+  # selector: 이 Deployment가 관리할 파드를 찾는 방법을 정의합니다.
+  selector:
+    # matchLabels: 아래 레이블을 가진 파드들을 자신의 소속으로 인식합니다.
+    matchLabels:
+      app: php-apache
+  # replicas: 초기에 실행할 파드의 수. HPA에 의해 이 값은 동적으로 변경됩니다.
+  replicas: 1
+  # template: Deployment가 파드를 생성할 때 사용할 '설계도' 또는 '템플릿'입니다.
+  template:
+    metadata:
+      # labels: 생성될 파드에 adjf될 레이블. 위의 selector와 일치해야 합니다.
+      labels:
+        app: php-apache
+    # spec: 파드의 상세 스펙을 정의합니다.
+    spec:
+      # containers: 파드 내에서 실행될 컨테이너 목록입니다.
+      containers:
+      - name: php-apache # 컨테이너의 이름
+        # image: 컨테이너를 생성할 도커 이미지
+        image: k8s.gcr.io/hpa-example
+        # ports: 컨테이너가 외부에 노출할 포트 정보입니다.
+        ports:
+        - containerPort: 80 # 컨테이너 내부에서 80번 포트를 사용
+        # resources: 컨테이너가 사용할 리소스(CPU, 메모리)의 양을 정의합니다.
+        resources:
+          # requests: 컨테이너에 '최소한' 보장해 주어야 하는 리소스 양입니다.
+          # HPA는 바로 이 'requests' 값을 기준으로 사용률을 계산하므로 매우 중요합니다.
+          requests:
+            cpu: "200m" # 200m = 0.2 코어. 이 파드는 최소 0.2개의 CPU 코어를 요청합니다.

@@ -1,0 +1,25 @@
+# 이 YAML 파일은 'nodeSelector'를 사용하여 특정 레이블을 가진 노드에만
+# 포드를 스케줄링하는 디플로이먼트 예제입니다.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: deployment-nginx
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: deployment-nginx
+  template:
+    metadata:
+      name: deployment-nginx
+      labels:
+        app: deployment-nginx
+    spec:
+      # 'nodeSelector'는 포드가 스케줄링될 노드를 선택하는 가장 간단한 방법입니다.
+      # 여기에 지정된 레이블을 모두 가지고 있는 노드에만 포드가 할당됩니다.
+      nodeSelector:
+        # 'mylabel/disk'라는 키를 가진 레이블의 값이 'hdd'인 노드에만 포드를 스케줄링합니다.
+        mylabel/disk: hdd
+      containers:
+      - name: deployment-nginx
+        image: nginx:latest

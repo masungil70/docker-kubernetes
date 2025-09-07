@@ -1,0 +1,17 @@
+# 이 YAML 파일은 초기화 컨테이너(Init Container)의 기본 예제를 보여줍니다.
+apiVersion: v1
+kind: Pod
+metadata:
+  name: init-container-example
+spec:
+  # initContainers는 메인 컨테이너가 시작되기 전에 순차적으로 실행되는 컨테이너 목록입니다.
+  # 모든 initContainer가 성공적으로 완료되어야 메인 컨테이너가 시작됩니다.
+  initContainers:
+  - name: my-init-container
+    image: busybox
+    # "Hello World!"를 출력하고 종료하는 간단한 명령을 실행합니다.
+    command: ["sh", "-c", "echo Hello World!"]
+  # containers는 initContainers가 모두 성공적으로 완료된 후에 시작되는 메인 컨테이너입니다.
+  containers:
+  - name: nginx
+    image: nginx

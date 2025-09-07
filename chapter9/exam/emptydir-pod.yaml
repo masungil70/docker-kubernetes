@@ -1,0 +1,43 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: emptydir-example
+spec:
+  # 1. `emptyDir` 볼륨을 "shared-data" 라는 이름으로 정의합니다.
+  volumes:
+  - name: shared-data
+    emptyDir: {}
+
+  containers:
+  # 메인 앱 컨테이너: 5초마다 /data/time.log 파일에 현재 시간을 기록합니다.
+  - name: main-app
+    image: busybox
+    command: ["/bin/sh", "-c"]
+    args:
+    - |
+      while true; do
+        echo "$(date)" > /data/time.log;
+        echo "Wrote time to /data/time.log";
+        sleep 5;
+      done
+    # 2. 위에서 정의한 "shared-data" 볼륨을 컨테이너의 /data 경로에 마운트합니다.
+    volumeMounts:
+    - name: shared-data
+      mountPath: /data
+
+  # 사이드카 컨테이너: 5초마다 /shared/time.log 파일을 읽어 로그로 출력합니다.
+  - name: sidecar
+    image: busybox
+    command: ["/bin/sh", "-c"]
+    args:
+    - |
+      while true; do
+        if [ -f /shared/time.log ]; then
+          echo "Sidecar reading: $(cat /shared/time.log)";
+        fi;
+        sleep 5;
+      done
+    # 3. 동일한 "shared-data" 볼륨을 컨테이너의 /shared 경로에 마운트합니다.
+    volumeMounts:
+    - name: shared-data
+      mountPath: /shared

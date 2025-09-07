@@ -1,0 +1,108 @@
+ 멀티 스테이지 빌드는 Dockerfile 내에서 여러 FROM 명령어를 사용하여 Docker 이미지를 최적화하는 강력한
+  기능입니다. 빌드 프로세스를 여러 단계로 나누어 최종 이미지에 필요한 최소한의 파일만 포함되도록 합니다.
+
+  멀티 스테이지 빌드란?
+
+  일반적인 Dockerfile은 하나의 FROM 명령어로 시작하여 모든 빌드 및 런타임 단계를 하나의 이미지 레이어에
+  쌓아 올립니다. 이로 인해 최종 이미지에 애플리케이션 실행에 불필요한 컴파일러, SDK, 빌드 도구, 임시 파일
+  등이 포함되어 이미지 크기가 커지고 보안 취약점이 증가할 수 있습니다.
+
+  멀티 스테이지 빌드는 이러한 문제를 해결하기 위해 Dockerfile 내에 여러 개의 FROM 명령어를 사용하여 여러
+  빌드 "스테이지"를 정의합니다. 각 스테이지는 독립적인 빌드 환경을 제공하며, 이전 스테이지에서 생성된
+  아티팩트(예: 컴파일된 바이너리, 설치된 라이브러리)만 다음 스테이지로 복사할 수 있습니다.
+
+  멀티 스테이지 빌드를 사용하는 이유 (장점)
+
+   1. 이미지 크기 최소화 (가장 큰 장점): 개발 및 빌드에 필요한 도구(예: 컴파일러, 테스트 프레임워크)는 빌드
+      과정에서만 필요하며, 최종 런타임 이미지에는 필요하지 않습니다. 멀티 스테이지 빌드를 사용하면 이러한
+      불필요한 도구들을 최종 이미지에서 제외하여 이미지 크기를 대폭 줄일 수 있습니다.
+   2. 빌드 속도 향상 (경우에 따라): 각 스테이지가 독립적으로 캐싱될 수 있어, 변경된 부분만 다시 빌드하여 빌드
+      시간을 단축할 수 있습니다.
+   3. 더 깨끗하고 안전한 이미지: 최종 이미지에 불필요한 소프트웨어가 없으므로 공격 표면(attack surface)이
+      줄어들어 보안성이 향상됩니다.
+   4. Dockerfile 단순화: 빌드 아티팩트를 정리하기 위한 복잡한 RUN 명령어나 임시 파일 삭제 명령어를 사용할
+      필요가 없어 Dockerfile이 더 간결해집니다.
+
+  멀티 스테이지 빌드 작동 방식
+
+   1. 스테이지 정의: 각 FROM 명령어는 새로운 빌드 스테이지를 시작합니다. FROM <base_image> AS <stage_name>
+      형식으로 스테이지에 이름을 부여할 수 있습니다. 이름을 지정하지 않으면 0부터 시작하는 숫자로 참조할 수
+      있습니다.
+   2. 아티팩트 복사: COPY --from=<stage_name_or_number> <source_path> <destination_path> 명령어를 사용하여
+      이전 스테이지에서 생성된 파일이나 디렉토리를 현재 스테이지로 복사합니다. 이 명령어를 통해 필요한
+      아티팩트만 최종 이미지로 전달됩니다.
+   3. 최종 이미지: Dockerfile의 마지막 FROM 명령어가 정의하는 스테이지가 최종적으로 빌드되는 Docker 이미지의
+      기반이 됩니다.
+
+예제 폴더 구조
+    rolling-update-multistage
+    ├── Dockerfile        # 수정됨 
+    ├── docker-compose.yml
+    ├── main.py
+    ├── nginx
+    │   └── nginx.conf
+    └── requirements.txt
+
+Dockerfile 분석 
+
+vi Dockerfile
+# Stage 1: Builder Stage - To install python dependencies on Alpine
+FROM python:3.9-alpine AS builder
+
+# C 확장 모듈 컴파일이 필요한 경우를 대비하여 빌드 의존성 설치
+RUN apk add --no-cache build-base
+
+WORKDIR /app
+
+# Copy and install requirements
+COPY requirements.txt .
+RUN pip install --no-cache-dir --user -r requirements.txt
+
+# Stage 2: Final Stage - The actual runtime image on Alpine
+FROM python:3.9-alpine
+
+WORKDIR /app
+
+# healthcheck를 위한 curl 설치
+RUN apk add --no-cache curl
+
+# builder 스테이지에서 설치한 패키지 복사
+COPY --from=builder /root/.local /root/.local
+
+# 애플리케이션 코드만 복사
+COPY main.py .
+
+# PATH 환경 변수에 로컬 bin 디렉토리 추가
+ENV PATH=/root/.local/bin:$PATH
+
+# 애플리케이션이 사용하는 포트 노출
+EXPOSE 8000
+
+# 애플리케이션이 정상적으로 실행 중인지 확인하는 Healthcheck
+HEALTHCHECK --interval=10s --timeout=5s --retries=3 \
+  CMD curl -f http://localhost:8000/healthz || exit 1
+
+# 애플리케이션 실행 명령어
+CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
+
+
+
+이전의 이미지 크기를 확인합니다 
+  docker images 
+
+    REPOSITORY       TAG       IMAGE ID       CREATED          SIZE
+    my-fastapi-app   1.0       2767d4deaa57   19 minutes ago   153MB
+
+  약 153M  정도의 크기입니다 
+
+  이제 멀티스테이지을 적용한 빌드를 진행해 보겠습니다 
+  docker compose build 
+
+  발드가 끝나고 이미지의 ㅡ기를 확인 해보시면 
+  docker images 
+
+  REPOSITORY       TAG       IMAGE ID       CREATED          SIZE
+  my-fastapi-app   1.0       430450803c5c   3 seconds ago    68.6MB
+
+  약 80M  정도의 크기로 줄어드는 것을 확인 할 수 있습니다 
+

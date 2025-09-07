@@ -1,0 +1,24 @@
+# --- HorizontalPodAutoscaler --- #
+# apiVersion: autoscaling/v1은 CPU 기반의 스케일링만 지원하는 기본 버전입니다.
+# (메모리나 커스텀 메트릭을 사용하려면 autoscaling/v2를 사용해야 합니다.)
+apiVersion: autoscaling/v1
+kind: HorizontalPodAutoscaler # 리소스의 종류는 'HPA' 입니다.
+metadata:
+  name: php-apache # 이 HPA의 고유한 이름
+# spec: HPA의 동작 방식을 상세하게 정의합니다.
+spec:
+  # scaleTargetRef: 스케일링(확장/축소)을 적용할 대상을 지정합니다.
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: php-apache # 'php-apache'라는 이름의 Deployment를 대상으로 함
+  
+  # minReplicas: 파드의 최소 개수. 아무리 부하가 없어도 이 개수는 유지됩니다.
+  minReplicas: 1
+  # maxReplicas: 파드의 최대 개수. 아무리 부하가 많아도 이 개수를 초과하여 확장되지 않습니다.
+  maxReplicas: 10
+
+  # targetCPUUtilizationPercentage: 스케일링의 기준이 되는 목표 CPU 사용률입니다.
+  # 파드들의 평균 CPU 사용률이 이 값을 초과하면 파드 개수를 늘리고, 낮아지면 줄입니다.
+  # 사용률 = (실제 CPU 사용량 / 파드에 요청된 CPU 양(requests.cpu)) * 100
+  targetCPUUtilizationPercentage: 50

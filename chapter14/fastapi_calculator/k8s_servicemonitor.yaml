@@ -1,0 +1,14 @@
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: fastapi-calculator-sm
+  labels:
+    release: prometheus # 프로메테우스 오퍼레이터가 이 레이블을 찾도록 설정
+spec:
+  selector:
+    matchLabels:
+      app: fastapi-calculator
+  endpoints:
+  - port: http
+    path: /metrics
+    interval: 15s

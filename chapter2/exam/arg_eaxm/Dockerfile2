@@ -1,0 +1,19 @@
+# 1단계: ARG로 모드 선택
+ARG MODE=dev
+FROM python:3.11-slim
+
+# 2단계: 다시 ARG 선언해야 FROM 이후에서도 인식됨
+ARG MODE=dev
+
+WORKDIR /app
+COPY . .
+
+# 3단계: 빌드 시 선택된 모드에 따라 파일 선택
+RUN if [ "$MODE" = "prod" ]; then \
+      cp app_prod.py main.py; \
+    else \
+      cp app_dev.py main.py; \
+    fi
+
+CMD ["python", "main.py"]
+

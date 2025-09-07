@@ -1,0 +1,7 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: log-level-configmap
+data:
+  # 방법 1: 일반적인 키-값
+  LOG_LEVEL: INFO

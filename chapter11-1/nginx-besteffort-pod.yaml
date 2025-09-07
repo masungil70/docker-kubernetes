@@ -1,0 +1,14 @@
+# 이 YAML 파일은 Pod를 정의합니다.
+# 이 Pod는 리소스에 대한 requests와 limits를 전혀 명시하지 않았습니다.
+# 이렇게 생성된 Pod는 쿠버네티스에서 'BestEffort' QoS 클래스로 분류됩니다.
+# BestEffort Pod는 가장 낮은 우선순위를 가지며, 노드에 리소스가 부족해지면 가장 먼저 종료(Evict)될 대상이 됩니다.
+# 중요하지 않은 테스트나 배치 작업에 사용될 수 있습니다.
+apiVersion: v1
+kind: Pod
+metadata:
+  name: nginx-besteffort-pod
+spec:
+  containers:
+  - name: nginx-besteffort-pod
+    image: nginx:latest
+    # resources 필드가 없으므로 BestEffort QoS 클래스가 됩니다.

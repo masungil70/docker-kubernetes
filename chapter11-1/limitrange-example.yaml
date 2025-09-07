@@ -1,0 +1,35 @@
+# 이 YAML 파일은 LimitRange 객체를 정의합니다.
+# LimitRange는 네임스페이스 내에서 리소스를 명시하지 않은 컨테이너에 대해
+# 기본 요청(request)/제한(limit) 값을 자동으로 설정하고, 또한 최대/최소 리소스 사용량을 강제합니다.
+apiVersion: v1
+kind: LimitRange
+metadata:
+  name: mem-limit-range
+spec:
+  limits:
+  - # 이 LimitRange 항목은 개별 'Container'에 적용됩니다.
+    type: Container
+
+    # 1. 기본 Limit 값 (default):
+    # 컨테이너에 limits를 명시하지 않으면 이 값이 자동으로 할당됩니다.
+    default:
+      memory: 256Mi
+      cpu: 200m
+
+    # 2. 기본 Request 값 (defaultRequest):
+    # 컨테이너에 requests를 명시하지 않으면 이 값이 자동으로 할당됩니다.
+    defaultRequest:
+      memory: 128Mi
+      cpu: 100m
+
+    # 3. 최대 자원 할당량 (max):
+    # 컨테이너가 설정할 수 있는 limits의 최댓값입니다. 이보다 높게 설정할 수 없습니다.
+    max:
+      memory: 1Gi
+      cpu: "1000m"
+
+    # 4. 최소 자원 할당량 (min):
+    # 컨테이너가 설정해야 하는 requests의 최솟값입니다. 이보다 낮게 설정할 수 없습니다.
+    min:
+      memory: 16Mi
+      cpu: "50m"

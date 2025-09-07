@@ -1,0 +1,31 @@
+# my-ingress-tls.yaml
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: my-app-ingress-tls
+  annotations:
+    nginx.ingress.kubernetes.io/rewrite-target: /
+spec:
+  ingressClassName: "nginx"
+  tls: # TLS 설정 추가
+  - hosts:
+    - my-app.com # 이 호스트 이름에 TLS를 적용
+    secretName: tls-secret # 5-1에서 만든 Secret 사용
+  rules:
+  - host: my-app.com # 호스트 기반 라우팅 규칙
+    http:
+      paths:
+      - path: /apple
+        pathType: Prefix
+        backend:
+          service:
+            name: apple-service
+            port:
+              number: 8000
+      - path: /banana
+        pathType: Prefix
+        backend:
+          service:
+            name: banana-service
+            port:
+              number: 8000

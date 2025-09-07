@@ -1,0 +1,21 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: backend-config
+  namespace: dev
+data:
+  APP_MODE: "development"
+  DB_HOST: "db-service"
+  DB_NAME: "kosa_db_dev"
+  DB_USER: "kosa_dev"
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: backend-config
+  namespace: prod
+data:
+  APP_MODE: "production"
+  DB_HOST: "db-service"
+  DB_NAME: "kosa_db_prod"
+  DB_USER: "kosa_prod"

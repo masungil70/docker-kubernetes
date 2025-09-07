@@ -1,0 +1,143 @@
+docker image
+#이미지 검색 
+docker search ubuntu
+
+#도커 이미지 생성 (commit)
+#ubuntu:24.04 이미지 commit_test 컨테이너 명으로 실행한다 
+docker run -it --name commit_test ubuntu:24.04
+
+#컨테이너 안에서 first 파일 생성 
+echo test_first! >> first
+
+#commit_test 컨테이너 종료한다 
+exit
+
+#로컬 저장소에 commit_test 컨테이너를 이미지명 commit_test:first 으로 저장한다
+#-a 작성자 정보 
+docker commit \
+  -a "작성자정보" \
+  -m "커밋 메시지 my first commit message" \
+  commit_test \
+  commit_test:first
+  
+#생성된 이미지를 확인 한다 
+docker images 
+
+#commit_test:first 이미지 명으로 commit_test2라는 컨터이너를 생성한다 
+docker run -it --name commit_test2 commit_test:first 
+
+#commit_test2 컨터이너에서 second 파일을 생성한다
+echo test_second! >> second
+
+#commit_test 컨테이너 종료한다 
+exit
+
+#로컬 저장소에 commit_test 컨테이너를 이미지명 commit_test:second 으로 저장한다
+docker commit \
+  -a "작성자정보" \
+  -m "커밋 메시지 my second commit message" \
+  commit_test2 \
+  commit_test:second
+ 
+ 
+#이미지 구조 
+docker inspect ubuntu:24.04
+docker inspect commit_test:first
+docker inspect commit_test:second
+
+#이미지 commit_test:first 삭제하여고 하면 commit_test2 컨테이너가 실행 중에 있을 경우  commit_test:second에 의해 사용되기 때문에 충돌 오류 발생 
+docker rmi  commit_test:first
+
+#commit_test2 컨테이너 종료하고 제거 한다 
+docker stop commit_test2 && docker rm commit_test2
+
+#commit_test:first 이미지 삭제(실제 삭제는 되지 않음 : commit_test:second 이미지에 의해 사용되 때문에 삭젝되지 않음, tag만 삭제됨)
+docker rmi  commit_test:first
+
+#모든 이미지 확인 (none 확인)
+docker images -a 
+
+#commit_test:second 이미지 삭제 (deleted 메시지 확인 : 이미지 레이어가 실제 삭제됨)
+docker rmi commit_test:second
+
+#도커 이미지 추출 / 로드(tar 파일로 저장/로드)
+#ubuntu:24.04이미지를 ubuntu_24_04.tar 이름으로 저장한다
+docker save -o ubuntu_24_04.tar ubuntu:24.04
+
+#ls 로 생성된 파일 확인한다 
+ls -la ubuntu_24_04.tar
+
+#ubuntu:24.04이미지를 ubuntu_24_04.tar 이름으로 저장한다
+docker load -i ubuntu_24_04.tar
+
+#commit_test 컨터이너를 rootFS.tar 파일로 저장(추천하지않음, 레이어가 1개로 변경됨)
+docker export -o rootFS.tar  commit_test
+
+#rootFS.tar 파일을 commit_test이미지로 로딩함 (추천하지않음, 레이어가 1개로 변경됨)
+#tag 생략하면 자동으로 latest로 됨 
+docker import rootFS.tar  commit_test
+
+#전체 도커 이미지 목록 확인 
+docker images 
+
+로딩한 도커 이미지 commit_test:latest 상세 구조 확인(Layers 확인)
+docker inspect commit_test:latest #레이어 1개
+docker inspect commit_test:first  #레이어 2개
+
+#도커이미지 배포 
+#1. 도커 허브 저장소에 저장하기 위해 계정 생성 
+#2. 도커 로그인 (아이디/ 비번)
+docker login -u masungil
+
+#로컬 저장소에 저장된 이미지를 도커 허브에 저장을 하려면 이미지명 앞에 계정 명이 있어여 함
+#로컬 저장소에 저장된 이미지 명 변경(tag)
+#1. ubuntu:24.04 이미지로 commit_container1 컨테이너 생성 
+docker run -it --name commit_container1 ubuntu:24.04
+
+#test 파일을 생성한다 
+echo my fitst push > test
+
+#컨테이너 종료 
+exit
+
+#종료한 컨테이너를 이미지명 my-images-name:0.0으로 저장한다 
+docker commit commit_container1 my-images-name:0.0
+
+#이미지명 my-images-name:0.0의 앞에 계정명을 추가한다 
+#docker tag my-images-name:0.0 [계정명]/my-images-name:0.0
+docker tag my-images-name:0.0 masungil/my-images-name:0.0
+
+#변경된 이미지명을 도커 허브에 저장한다 
+docker push  masungil/my-images-name:0.0
+
+#로컬 저장소 저장된 이미지 삭제 
+docker rmi masungil/my-images-name:0.0
+
+#도커 허브에 저장된  이미지 로컬 저장소 가지고 오기 
+docker pull  masungil/my-images-name:0.0
+
+#도커 이미지 목록 확인(도커 허브 내려 받은 이미지 확인)
+docker images 
+
+#masungil/my-images-name:0.0 이미지를 컨테이너로 실행하고 생성된 test 파일을 확인한다
+#컨테이너 종료 하면 자동으로 컨테이너 제거되게 한다(--rm) 
+docker run --it --rm masungil/my-images-name:0.0
+
+# 생성된 test 파일을 확인
+cat test
+
+#다른 터미널로 host 장비에 연결하여 실행 중인 컨테이너 확인 (masungil/my-images-name:0.0 이미지로 생성된 컨테이너 확인 : 존재함)
+docker ps 
+
+#컨테이너 종료 
+exit
+
+#다른 터미널로 host 장비에 연결하여 실행 중인 컨테이너 확인 
+#masungil/my-images-name:0.0 이미지로 생성된 컨테이너 확인 실제 존재하지 않음)
+docker ps -a 
+
+
+ 
+ 
+
+

@@ -1,0 +1,17 @@
+# --- Load Generator Pod --- #
+apiVersion: v1
+kind: Pod # Deployment가 아닌 단일 Pod를 생성합니다. 이 작업만 하고 삭제될 임시 파드입니다.
+metadata:
+  name: load-generator # 파드의 이름
+spec:
+  containers:
+  - name: load-generator-container # 컨테이너의 이름
+    image: busybox # 경량화된 기본 유닉스 도구가 포함된 이미지
+    
+    # 아래 command와 args는 컨테이너가 시작될 때 실행할 명령어를 정의합니다.
+    command: ["/bin/sh"]
+    args: 
+    - "-c"
+    # 'php-apache'는 Service의 이름입니다. 쿠버네티스 내부 DNS가 이 이름을
+    # 해당 서비스의 IP로 자동 변환해 줍니다.
+    - "while sleep 0.01; do wget -q -O- http://php-apache; done"

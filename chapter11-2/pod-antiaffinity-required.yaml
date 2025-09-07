@@ -1,0 +1,25 @@
+# 이 YAML 파일은 포드 안티-어피니티(Pod Anti-Affinity)의 '필수(required)' 규칙을 사용하는 예제입니다.
+# 특정 포드와 동일한 토폴로지 도메인에 스케줄링되는 것을 금지합니다.
+apiVersion: v1
+kind: Pod
+metadata:
+  name: nginx-pod-antiaffinity
+spec:
+  affinity:
+    podAntiAffinity:
+      # 'requiredDuringSchedulingIgnoredDuringExecution'은 스케줄링 시점에 규칙을 반드시 만족해야 함을 의미합니다.
+      requiredDuringSchedulingIgnoredDuringExecution:
+      - labelSelector:
+          matchExpressions:
+          # 'mylabel/database' 레이블의 값이 'mysql'인 포드를 찾습니다.
+          - key: mylabel/database
+            operator: In
+            values:
+            - mysql
+        # 'topologyKey'는 안티-어피니티 규칙을 적용할 지역적 범위를 정의합니다.
+        # 'failure-domain.beta.kubernetes.io/zone'은 가용성 존(AZ)을 의미합니다.
+        # 즉, 'mysql' 포드가 있는 가용성 존에는 이 포드를 스케줄링할 수 없습니다.
+        topologyKey: failure-domain.beta.kubernetes.io/zone
+  containers:
+  - name: nginx
+    image: nginx:latest

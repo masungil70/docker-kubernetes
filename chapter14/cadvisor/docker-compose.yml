@@ -1,0 +1,36 @@
+version: '3.8'
+
+services:
+  # 1. FastAPI 애플리케이션 서비스
+  api:
+    build: .
+    container_name: fastapi_app
+    restart: always
+
+  # 2. Nginx 리버스 프록시 서비스
+  nginx:
+    image: nginx:latest
+    container_name: nginx_proxy
+    ports:
+      - "8080:80" # 호스트의 8080 포트를 컨테이너의 80 포트로 연결
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro # nginx.conf 파일을 컨테이너에 마운트 (읽기 전용)
+    depends_on:
+      - api # api 서비스가 실행된 후에 nginx 서비스가 실행되도록 설정
+    restart: always
+
+  # 3. cAdvisor 모니터링 서비스
+  cadvisor:
+    image: gcr.io/cadvisor/cadvisor:latest
+    container_name: cadvisor
+    privileged: true
+    ports:
+      - "8081:8080" # 호스트의 8081 포트를 컨테이너의 8080 포트로 연결
+    volumes:
+      - /:/rootfs:ro
+      - /var/run:/var/run:rw
+      - /sys:/sys:ro
+      - /var/lib/docker/:/var/lib/docker:ro
+    devices:
+      - /dev/kmsg
+    restart: always

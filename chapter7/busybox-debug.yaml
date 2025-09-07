@@ -1,0 +1,18 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: busybox-debug-pod
+spec:
+  containers:
+  - name: busybox
+    image: busybox:1.36 # 특정 버전을 명시하는 것이 좋습니다.
+    command:
+      - /bin/sh
+      - -c
+      - |
+        echo "--- Pinging 8.8.8.8 (3 times) ---"
+        ping -c 3 8.8.8.8
+        echo
+        echo "--- Pod is now sleeping. Use 'kubectl exec' to get a shell. ---"
+        sleep 3600
+

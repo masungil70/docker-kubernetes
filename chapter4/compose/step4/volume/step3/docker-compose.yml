@@ -1,0 +1,64 @@
+#version: '3.8'
+
+services:
+  # 1. MariaDB 데이터베이스 서비스
+  db:
+    image: mariadb:10.5
+    restart: always
+    container_name: db
+    # MariaDB 컨테이너를 초기화하기 위한 환경 변수들입니다.
+    environment:
+      - MYSQL_ROOT_PASSWORD=1004
+      - MYSQL_DATABASE=kosa_db
+      - MYSQL_USER=kosa
+      - MYSQL_PASSWORD=1004
+    # 호스트의 './mariadb_data' 디렉토리를 컨테이너의 '/var/lib/mysql' 디렉토리와 동기화
+    volumes:
+      # 네임드 볼륨: MariaDB 데이터 영속성을 위해 사용
+      # 컨테이너가 삭제되어도 데이터는 'mariadb_data' 볼륨에 유지됩니다.
+      - mariadb_data:/var/lib/mysql
+
+  # 2. FastAPI 백엔드 서비스
+  backend:
+    build: ./backend # ./backend 디렉토리의 Dockerfile을 사용하여 이미지 빌드
+    container_name: backend
+    environment:
+      - DB_HOST=db
+      - DB_NAME=kosa_db
+      - DB_USER=kosa
+      - DB_PASSWORD=1004
+    # 호스트의 './backend' 디렉토리를 컨테이너의 '/app' 디렉토리와 동기화
+    volumes:
+      - ./backend:/app
+    depends_on:
+      - db # db 서비스가 먼저 시작되도록 의존성 설정
+
+  # 3. Nginx 웹 서버 서비스 (프론트엔드 서빙 및 백엔드 프록시)
+  nginx:
+    image: nginx:latest # Nginx 이미지 사용
+    ports:
+      - "80:80" # 웹 접근을 위해 호스트 80 포트를 컨테이너 80 포트에 연결
+    volumes:
+      # 바인드 마운트: Nginx 설정 파일을 호스트에서 관리하기 위해 사용
+      # 호스트의 ./nginx/nginx.conf 파일이 컨테이너의 /etc/nginx/nginx.conf 파일과 동기화됩니다.
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro # 읽기 전용(ro)으로 마운트
+      # 바인드 마운트: 프론트엔드 정적 파일을 호스트에서 관리하기 위해 사용
+      # 호스트의 ./frontend 디렉토리가 컨테이너의 /usr/share/nginx/html 디렉토리와 동기화됩니다.
+      - ./frontend:/usr/share/nginx/html
+    depends_on:
+      - backend # backend 서비스가 먼저 시작되도록 의존성 설정
+
+# 최상위 레벨에서 사용할 네임드 볼륨들을 정의 하고 폴더와 파일을 호스트에 바인드 마운트합니다.
+volumes:
+  mariadb_data: # MariaDB 데이터용 네임드 볼륨 이름(컨테이너에서는 이 이름으로 참조)
+    driver: local         # 로컬 볼륨 드라이버 사용 (기본값)
+    driver_opts:
+      type: none          # 마운트 타입 (none = 파일시스템 타입 미지정, 바인드에 사용)
+      o: bind             # 옵션: bind 마운트 수행
+      device: ./mariadb_data  # 호스트의 실제 경로 (여기에 데이터를 저장)
+  backend_logs: # FastAPI 로그용 네임드 볼륨
+    driver: local         # 로컬 볼륨 드라이버 사용 (기본값)
+    driver_opts:
+      type: none          # 마운트 타입 (none = 파일시스템 타입 미지정, 바인드에 사용)
+      o: bind             # 옵션: bind 마운트 수행
+      device: ./backend_logs  # 호스트의 실제 경로 (여기에 데이터를 저장)

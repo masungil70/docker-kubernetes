@@ -1,0 +1,33 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: my-pod-1
+spec:
+  containers:
+    - name: my-container
+      image: busybox
+      command: 
+        - /bin/sh
+        - -c
+        - |
+          env # 컨테이너의 모든 환경 변수 출력
+          echo "--- sleep 1시간 기다림 ---"
+          sleep 3600
+      env:
+        - name: APP_NAME_IN_POD # 파드에서 사용할 환경 변수 이름
+          valueFrom:
+            configMapKeyRef:
+              name: my-nginx-config # 사용할 ConfigMap 이름
+              key: app.name         # 사용할 ConfigMap의 key
+
+
+# 환경 변수를 my-nginx-config.yaml 파일을 실행해서 ConfigMap을 만들고
+# kubectl apply -f my-nginx-config.yaml
+# 해당 파일을 파드로 실행항여 결과를 확인 한다 
+# kubectl apply -f pod-with-env.yaml
+# 로그을 확인한다 
+# kubectl logs my-pod-1
+# 환경 변수가 잘 설정되었는지 확인
+# 파드 내부로 진입하여 환경설정 외에 확인하고 싶은 것을 확인한다
+# kubectl exec -it my-pod-1 -- /bin/sh
+# echo $APP_NAME_IN_POD

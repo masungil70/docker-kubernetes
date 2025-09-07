@@ -1,0 +1,13 @@
+# Dockerfile
+
+FROM ubuntu:24.04
+
+# /test 디렉토리 생성
+RUN mkdir /test
+
+# 100MB 크기의 dummy 파일 생성
+RUN fallocate -l 100m /test/dummy
+
+# dummy 파일 삭제
+RUN rm /test/dummy
+

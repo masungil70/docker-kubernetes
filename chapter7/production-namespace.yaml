@@ -1,0 +1,9 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: production
+
+# production 네임스페이스 생성합니다  
+# kubectl apply -f production-namespace.yaml
+
+# 다음은 예제로 hostname-deploy-svc-ns.yaml 을 확인합니다 

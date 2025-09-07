@@ -1,0 +1,7 @@
+# ---  문서 시작 ---
+# 참
+is_enabled: true
+
+# 거짓
+is_visible: false
+# --- 문서의 끝 ---

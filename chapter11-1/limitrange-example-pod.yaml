@@ -1,0 +1,20 @@
+# 이 YAML 파일은 LimitRange 객체를 정의합니다.
+# LimitRange는 네임스페이스 내의 개별 Pod 또는 컨테이너에 대한 리소스 제약 조건을 설정합니다.
+# 이 예제는 Pod 수준에서의 메모리 사용량을 제한합니다.
+apiVersion: v1
+kind: LimitRange
+metadata:
+  name: pod-limit-range
+spec:
+  limits:
+  - # 이 LimitRange 항목은 'Pod' 타입에 적용됩니다.
+    # 즉, Pod에 속한 모든 컨테이너의 리소스 요청(requests)과 제한(limits)의 합계를 기준으로 합니다.
+    type: Pod
+    # Pod가 사용할 수 있는 최대 메모리 양을 1Gi로 제한합니다.
+    # Pod 내 모든 컨테이너의 'limits.memory'의 합이 1Gi를 초과할 수 없습니다.
+    max:
+      memory: 1Gi
+    # Pod가 요청해야 하는 최소 메모리 양을 200Mi로 설정합니다.
+    # Pod 내 모든 컨테이너의 'requests.memory'의 합이 200Mi 이상이어야 합니다.
+    min:
+      memory: 200Mi

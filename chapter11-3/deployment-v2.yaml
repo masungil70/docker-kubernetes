@@ -1,0 +1,24 @@
+# 이 YAML 파일은 위의 deployment-v1.yaml에서 업데이트된 버전을 정의합니다.
+# 이미지 버전이 1.15에서 1.16으로 변경되었습니다.
+# 이 파일을 적용하면 롤링 업데이트가 트리거됩니다.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: nginx-deployment
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: nginx
+  template:
+    metadata:
+      name: nginx
+      labels:
+        app: nginx
+    spec:
+      containers:
+      - name: nginx
+        # nginx 1.16 버전 이미지로 업데이트합니다.
+        image: nginx:1.16
+        ports:
+        - containerPort: 80

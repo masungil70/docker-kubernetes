@@ -1,0 +1,18 @@
+# 이 YAML 파일은 사용자 정의 테인트(Taint)가 적용된 노드에 포드를 스케줄링하기 위해
+# 톨러레이션(Toleration)을 사용하는 예제입니다.
+apiVersion: v1
+kind: Pod
+metadata:
+  name: nginx-toleration-test
+spec:
+  # 'tolerations' 필드는 포드가 특정 테인트를 용인하도록 설정합니다.
+  tolerations:
+  # 'key', 'value', 'operator', 'effect'를 사용하여 특정 테인트를 정확히 지정합니다.
+  - key: alicek106/my-taint  # 용인할 테인트의 키
+    value: dirty               # 용인할 테인트의 값
+    operator: Equal           # 키와 값이 정확히 일치해야 함 (Equal)
+    effect: NoSchedule         # 용인할 테인트의 효과 (NoSchedule, PreferNoSchedule, NoExecute)
+    # 즉, 'alicek106/my-taint=dirty:NoSchedule' 라는 테인트를 가진 노드에 스케줄링될 수 있습니다.
+  containers:
+  - name: nginx
+    image: nginx:latest

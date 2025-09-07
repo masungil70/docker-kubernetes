@@ -1,0 +1,27 @@
+# 이 YAML 파일은 rolling-update-example-v1.yaml의 업데이트 버전을 정의합니다.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: deployment-rolling-update
+spec:
+  replicas: 4
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 2
+      maxUnavailable: 1
+  selector:
+    matchLabels:
+      app: nginx
+  template:
+    metadata:
+      name: nginx
+      labels:
+        app: nginx
+    spec:
+      containers:
+      - name: nginx
+        # nginx 1.16 버전 이미지로 업데이트합니다.
+        image: nginx:1.16
+        ports:
+        - containerPort: 80

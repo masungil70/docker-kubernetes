@@ -1,0 +1,23 @@
+# 이 YAML 파일은 Pod를 정의합니다.
+# 일반적으로 이 Pod는 ResourceQuota나 LimitRange와 같은 리소스 제한 정책을 테스트하기 위해 사용됩니다.
+# 예를 들어, 네임스페이스에 설정된 할당량(Quota)이 이 Pod가 요청하는 것보다 작을 경우,
+# 이 Pod의 생성은 거부(denied)될 것입니다.
+apiVersion: v1
+kind: Pod
+metadata:
+  name: denied-pod
+spec:
+  containers:
+  - name: nginx
+    image: nginx
+    resources:
+      # 컨테이너가 요청(requests)하는 리소스 양입니다.
+      # 스케줄러는 이 값을 보고 Pod를 배치할 노드를 결정합니다.
+      requests:
+        cpu: "20m"         # CPU 0.02 코어 요청
+        memory: "30Mi"       # 메모리 30 Mebibytes 요청
+      # 컨테이너가 최대로 사용할 수 있는 리소스 한도(limits)입니다.
+      # requests와 limits를 동일하게 설정하여 'Guaranteed' QoS 클래스로 만듭니다.
+      limits:
+        cpu: "20m"
+        memory: "30Mi"

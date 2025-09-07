@@ -1,0 +1,36 @@
+# 이 YAML 파일은 포드 안티-어피니티(podAntiAffinity)를 사용해
+# 레플리카들이 서로 다른 노드에 분산 배포되도록 강제하는 디플로이먼트 예제입니다.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: deployment-nginx
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: deployment-nginx
+  template:
+    metadata:
+      name: deployment-nginx
+      labels:
+        app: deployment-nginx
+    spec:
+      affinity:
+        podAntiAffinity:
+          # requiredDuringSchedulingIgnoredDuringExecution은 스케줄링 시점에 규칙을 반드시 만족해야 함을 의미합니다.
+          # 스케줄링 된 후에는 노드의 레이블이 변경되어도 포드가 제거되지 않습니다.
+          requiredDuringSchedulingIgnoredDuringExecution:
+            - labelSelector:
+               matchExpressions:
+                  # 'app' 레이블이 'deployment-nginx'인 포드와 동일한 노드에 스케줄링하지 않습니다.
+                  - key: app
+                    operator: In
+                    values:
+                      - deployment-nginx
+              # 'topologyKey'는 어피니티/안티-어피니티 규칙을 적용할 노드의 범위를 정의합니다.
+              # 'kubernetes.io/hostname'은 개별 노드를 의미합니다.
+              # 즉, 동일한 노드에 'app: deployment-nginx' 레이블을 가진 포드가 두 개 이상 존재할 수 없습니다.
+              topologyKey: "kubernetes.io/hostname"
+      containers:
+      - name: deployment-nginx
+        image: nginx:latest

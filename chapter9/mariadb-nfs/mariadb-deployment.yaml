@@ -1,0 +1,41 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: mariadb-deployment-nfs
+  labels:
+    app: mariadb-nfs
+spec:
+  selector:
+    matchLabels:
+      app: mariadb-nfs
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      labels:
+        app: mariadb-nfs
+    spec:
+      containers:
+        - name: mariadb
+          image: mariadb:10.5
+          env:
+            - name: MARIADB_ROOT_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: mariadb-secret-nfs
+                  key: MARIADB_ROOT_PASSWORD
+            - name: MARIADB_DATABASE
+              value: kosa_db
+            - name: MARIADB_USER
+              value: kosa
+            - name: MARIADB_PASSWORD
+              value: "1004"
+          ports:
+            - containerPort: 3306
+          volumeMounts:
+            - name: mariadb-persistent-storage
+              mountPath: /var/lib/mysql
+      volumes:
+        - name: mariadb-persistent-storage
+          persistentVolumeClaim:
+            claimName: mariadb-pvc

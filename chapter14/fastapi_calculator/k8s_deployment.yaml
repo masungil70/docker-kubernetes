@@ -1,0 +1,39 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: fastapi-calculator-deployment
+  labels:
+    app: fastapi-calculator
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: fastapi-calculator
+  template:
+    metadata:
+      labels:
+        app: fastapi-calculator
+    spec:
+      containers:
+      - name: fastapi-calculator
+        image: kosa/fastapi-calculator:1.0
+        imagePullPolicy: IfNotPresent # 로컬 이미지를 사용하므로 IfNotPresent로 설정
+        ports:
+        - containerPort: 8000
+          name: http
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: fastapi-calculator-service
+  labels:
+    app: fastapi-calculator
+spec:
+  selector:
+    app: fastapi-calculator
+  ports:
+    - protocol: TCP
+      port: 80
+      targetPort: http
+      name: http
+  type: ClusterIP

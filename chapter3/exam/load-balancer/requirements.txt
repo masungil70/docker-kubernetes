@@ -1,0 +1,5 @@
+# requirements.txt
+# FastAPI 웹 프레임워크
+fastapi
+# ASGI 서버 구현체 (FastAPI 애플리케이션을 실행하는 데 사용)
+uvicorn

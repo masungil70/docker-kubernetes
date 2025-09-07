@@ -1,0 +1,10 @@
+from fastapi import FastAPI
+from redis import Redis
+
+app = FastAPI()
+redis = Redis(host='redis', port=6379)
+
+@app.get("/")
+def read_root():
+    count = redis.incr('hits')
+    return {"message": f"This is a 수정된 페이지 :visited {count} times."}

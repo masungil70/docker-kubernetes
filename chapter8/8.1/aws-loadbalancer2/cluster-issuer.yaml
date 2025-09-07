@@ -1,0 +1,31 @@
+apiVersion: cert-manager.io/v1
+kind: ClusterIssuer
+metadata:
+  name: letsencrypt-prod
+spec:
+  acme:
+    # ACME 서버 주소 (프로덕션용)
+    server: https://acme-v02.api.letsencrypt.org/directory
+    # Let's Encrypt 계정으로 사용할 이메일 주소
+    # 반드시 실제 사용하는 이메일로 변경해주세요. (인증서 만료 알림 등에 사용)
+    email: masungil2@daum.net
+    # ACME 계정의 개인키를 저장할 Secret 리소스의 이름
+    privateKeySecretRef:
+      name: letsencrypt-prod-private-key
+    # 도메인 소유자임을 증명하는 방법(Challenge) 설정
+    solvers:
+    - dns01:
+        route53:
+          # AWS 계정 ID
+          accessKeyID: "" # 이 필드는 비워둡니다. IAM Role for Service Account (IRSA)를 사용하므로 Access Key ID/Secret Access Key를 직접 명시할 필요가 없습니다.
+          secretAccessKeySecretRef:
+            name: "" # 이 필드도 비워둡니다.
+            key: ""
+          # Cert-Manager 서비스 계정에 연결된 IAM Role을 사용하도록 설정
+          # 이전에 생성한 CertManagerRoute53Policy가 연결된 서비스 계정의 ARN을 사용합니다.
+          # YOUR_AWS_ACCOUNT_ID를 본인의 AWS 계정 ID로 변경하세요.
+          # 이 설정은 IRSA를 통해 자동으로 자격 증명을 가져옵니다.
+          role: arn:aws:iam::339713086268:role/eksctl-my-eks-cluster1004-addon-iamserviceaccount-cert-manager-Role # YOUR_CLUSTER_NAME을 실제 클러스터 이름으로 변경하세요.
+          # 또는, serviceAccountName을 지정하여 해당 서비스 계정의 IAM Role을 사용하도록 할 수 있습니다.
+          # serviceAccountName: cert-manager # cert-manager 네임스페이스의 cert-manager 서비스 계정
+          region: ap-northeast-2 

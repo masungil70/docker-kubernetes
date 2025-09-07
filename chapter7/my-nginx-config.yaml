@@ -1,0 +1,16 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: my-nginx-config
+data:
+  # 방법 1: 일반적인 키-값
+  app.name: "내가 만든 앱의 제목"
+
+  # 방법 2: 파일 내용처럼 여러 줄의 텍스트 저장
+  nginx.conf: |
+    server {
+        listen 80;
+        server_name example.com;
+        root /var/www/html;
+        index index.html;
+    }

@@ -1,0 +1,83 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: hostname-deployment-ns
+  namespace: production  # <-- 여기에 'production' 네임스페이스를 지정!
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: webserver
+  template:
+    metadata:
+      name: my-webserver
+      labels:
+        app: webserver
+    spec:
+      containers:
+      - name: my-webserver
+        image: masungil/echo-hostname:1.0
+        imagePullPolicy: Always  # <-- 이미지 항상 docker hub에서 가져오기
+        ports:
+        - containerPort: 8000
+--- 
+apiVersion: v1
+kind: Service
+metadata:
+  name: hostname-svc-clusterip-ns
+  namespace: production # <-- 여기에 'production' 네임스페이스를 지정!
+spec:
+  ports:
+    - name: web-port
+      port: 8080
+      targetPort: 8000
+  selector:
+    app: webserver
+  type: ClusterIP
+
+
+# 배포 및 서비스 생성 합니다 
+# kubectl apply -f hostname-deploy-svc-ns.yaml
+
+# 배포 및 서비스를 확인 합니다
+# kubectl get deployments --namespace=production
+# kubectl get services --namespace=production
+
+# 파드및 배포 및 서비스를 한번에 확인 합니다 (, 앞뒤에 공백 있으면 안됨)
+# kubectl get pods,services,deploy --namespace=production
+
+# 모든 네임스페이스 별로 파드 목록을 확인 합니다
+# kubectl get pods --all-namespaces
+
+# 현재 네임스페이스를 확인한다 
+# kubectl config view --minify | grep namespace:
+
+# 현재 네임스페이스를 production 으로 변경합니다
+# kubectl config set-context --current --namespace=production
+
+# 현재 네임스페이스를 default 으로 변경합니다
+# kubectl config set-context --current --namespace=default
+
+# default 네임스페이스의 pod에서 production 네임스페이스의 서비스를 호출하는 방법을 확인 합니다 합니다
+# 1.단계 chapter6 에 있던 deployment-hostname.yaml 을 실행한다
+# kubectl apply -f ../chapter6/deployment-hostname.yaml
+# 2.단계 default 네임스페이스의 pod에서 목록을 확인 하고 
+# kubectl get pods 
+# 3.단계 default 네임스페이스의 pod 에서 bash를 실행합니다  
+# kubectl exec -it [pod-name] -- bash
+# 4.단계 production 네임스페이스의 서비스명으로 curl 호출을 합니다
+# curl -s hostname-svc-clusterip-ns:8080
+# 위 명령이 실행이 되지 않는 것을 확인 합니다
+# 서비스명 뒤에 .production 을 붙여서 호출 합니다
+# 일반적으로 네임스페이스를 붙여서 호출 합니다
+# curl -s hostname-svc-clusterip-ns.production:8080
+
+
+
+# 네임스페이스에 속한 리소스 확인 하는 방법 
+# kubectl api-resources --namespaced=true
+
+# 네임스페이스에 속하지 않는 리소스 확인 하는 방법 
+# kubectl api-resources --namespaced=false
+
+# 다음은 env-hard-coding-deployment.yaml 파일을 보시면 됩니다 

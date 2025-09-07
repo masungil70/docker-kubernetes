@@ -1,0 +1,14 @@
+# 이 YAML 파일은 'nodeName' 필드를 사용하여 포드를 특정 노드에 직접 할당하는 예제입니다.
+# 이 방법은 스케줄러를 거치지 않고 포드를 특정 노드에 강제로 스케줄링합니다.
+# 일반적으로 디버깅이나 특별한 경우에만 사용됩니다.
+apiVersion: v1
+kind: Pod
+metadata:
+  name: nginx
+spec:
+  # 'nodeName'에 지정된 이름의 노드에 포드를 직접 할당합니다.
+  # 노드의 이름은 'kubectl get nodes' 명령으로 확인할 수 있습니다.
+  nodeName: ip-10-43-0-30.ap-northeast-2.compute.internal
+  containers:
+  - name: nginx
+    image: nginx:latest

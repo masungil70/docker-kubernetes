@@ -1,0 +1,39 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: hostname-deployment
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: webserver
+  template:
+    metadata:
+      name: my-webserver
+      labels:
+        app: webserver
+    spec:
+      containers:
+      - name: my-webserver
+#        image: alicek106/rr-test:echo-hostname
+        image: masungil/echo-hostname:1.0
+        imagePullPolicy: Always
+        ports:
+        - containerPort: 8000
+
+# Deployment 시작
+# kubectl apply -f deployment-hostname.yaml
+
+# Deployment 확인
+# kubectl get deployments
+
+# 실행중인 파드 확인
+# kubectl get pods -o wide
+
+# 파드 내부로 들러가기 위해 bash 를 실행한다 
+#kubectl exec -it 파드아이디 -- bash
+
+# 파드 내부에서 curl localhost 명령어 실행
+# curl localhost 
+
+
