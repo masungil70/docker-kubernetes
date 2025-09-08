@@ -1,0 +1,128 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: mariadb
+  labels:
+    app: mariadb
+spec:
+  serviceName: mariadb-headless
+  replicas: 2 # 1 Master + 1 Replica
+  selector:
+    matchLabels:
+      app: mariadb
+  template:
+    metadata:
+      labels:
+        app: mariadb
+    spec:
+      containers:
+        - name: mariadb
+          image: mariadb:10.6
+          env:
+            - name: MARIADB_ROOT_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: mariadb-secret
+                  key: root-password
+          ports:
+            - containerPort: 3306
+              name: mariadb
+          resources:
+            requests:
+              memory: "512Mi"
+              cpu: "200m"
+            limits:
+              memory: "768Mi"
+              cpu: "1000m"
+          volumeMounts:
+            - name: mariadb-data
+              mountPath: /var/lib/mysql
+            - name: mariadb-init-cnf-volume
+              mountPath: /etc/mysql/conf.d
+            - name: mariadb-init-sql-volume
+              mountPath: /docker-entrypoint-initdb.d/
+
+      initContainers:
+        - name: init-myservice
+          image: mariadb:10.6
+          command: ["/bin/sh", "-c"]
+          args:
+            - |
+              # 현재 생성 중인 pod 이름 확인
+              POD_NAME=$(hostname)
+              POD_INDEX=${POD_NAME##*-}
+              echo "Current pod index is: $POD_INDEX"
+
+              # DB공통 init-sql 복사(01-common.sql)
+              cp /mnt/init.sql/01-common.sql /mnt/sql/01-common.sql
+
+              # 마스터 DB는 0번임 (mariadb-0)
+              # == 대신 = 사용 (sh 호환)
+              if [ "$POD_INDEX" = "0" ]; then
+                cp /mnt/init.cnf/master.cnf /mnt/cnf/master.cnf
+                cp /mnt/init.sql/02-master.sql /mnt/sql/02-master.sql
+                echo "Master configuration completed"
+                exit 0
+              else
+                cp /mnt/init.cnf/slave.cnf /mnt/cnf/slave.cnf
+                cp /mnt/init.sql/02-slave.sql /mnt/sql/02-slave.sql
+                echo "Slave configuration will continue..."
+              fi
+
+              # 02-slave.sql 파일 수정 (slave인 경우만)
+              if [ "$POD_INDEX" != "0" ]; then
+                # mariadb-0 정상 동작 확인
+                until mysql -h mariadb-0.mariadb-headless -u root -proot -e "SELECT 1" > /dev/null 2>&1; do
+                  echo "Waiting for mariadb-0 to be ready..."
+                  sleep 5
+                done
+                
+                echo "mariadb-0 is ready, getting master status..."
+                
+                # 마스터 상태 가져오기
+                MASTER_STATUS=$(mysql -h mariadb-0.mariadb-headless -u root -proot -e "SHOW MASTER STATUS\G")
+                LOG_FILE=$(echo "$MASTER_STATUS" | grep "File:" | awk '{print $2}')
+                LOG_POS=$(echo "$MASTER_STATUS" | grep "Position:" | awk '{print $2}')
+                
+                echo "Master Log File: $LOG_FILE"
+                echo "Master Log Position: $LOG_POS"
+                
+                # 02-salve.sql 주입
+                sed -e "s/\${LOG_FILE}/$LOG_FILE/g" \
+                    -e "s/\${LOG_POS}/$LOG_POS/g" \
+                    /mnt/sql/02-slave.sql > /mnt/sql/02-slave.sql
+                
+                echo "Slave SQL file generated successfully"
+              fi
+
+          volumeMounts:
+            - name: mariadb-init-cnf-configmap
+              mountPath: /mnt/init.cnf
+            - name: mariadb-init-cnf-volume
+              mountPath: /mnt/cnf
+            - name: mariadb-init-sql-configmap
+              mountPath: /mnt/init.sql
+            - name: mariadb-init-sql-volume
+              mountPath: /mnt/sql
+
+      volumes:
+        - name: mariadb-init-cnf-configmap
+          configMap:
+            name: mariadb-init-cnf-configmap
+        - name: mariadb-init-sql-configmap
+          configMap:
+            name: mariadb-init-sql-configmap
+        - name: mariadb-init-cnf-volume
+          emptyDir: {}
+        - name: mariadb-init-sql-volume
+          emptyDir: {}
+
+  volumeClaimTemplates:
+    - metadata:
+        name: mariadb-data
+      spec:
+        accessModes: ["ReadWriteOnce"]
+        storageClassName: local-path
+        resources:
+          requests:
+            storage: 2Gi

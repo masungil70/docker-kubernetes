@@ -6,8 +6,8 @@ metadata:
     app: mariadb
 spec:
   ports:
-  - port: 3306
-    name: mariadb
+    - port: 3306
+      name: mariadb
   clusterIP: None # Headless Service
   selector:
     app: mariadb
@@ -21,9 +21,9 @@ metadata:
     role: master
 spec:
   ports:
-  - port: 3306
-    targetPort: 3306
-    name: mariadb
+    - port: 3306
+      targetPort: 3306
+      name: mariadb
   selector:
     app: mariadb
-    statefulset.kubernetes.io/pod-name: mariadb-0 # Selects only the master pod
+    apps.kubernetes.io/pod-index: "0"
