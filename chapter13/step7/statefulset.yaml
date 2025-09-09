@@ -6,7 +6,7 @@ metadata:
     app: mariadb
 spec:
   serviceName: mariadb-headless
-  replicas: 2 # 1 Master + 1 Replica
+  replicas: 3 # 1 Master + 1 Replica
   selector:
     matchLabels:
       app: mariadb
@@ -45,6 +45,12 @@ spec:
       initContainers:
         - name: init-myservice
           image: mariadb:10.6
+          env:
+            - name: MARIADB_ROOT_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: mariadb-secret
+                  key: root-password
           command: ["/bin/sh", "-c"]
           args:
             - |
@@ -72,7 +78,7 @@ spec:
               # 02-slave.sql 파일 수정 (slave인 경우만)
               if [ "$POD_INDEX" != "0" ]; then
                 # mariadb-0 정상 동작 확인
-                until mysql -h mariadb-0.mariadb-headless -u root -proot -e "SELECT 1" > /dev/null 2>&1; do
+                until mysql -h mariadb-0.mariadb-headless -u root -p"${MARIADB_ROOT_PASSWORD}" -e "SELECT 1" > /dev/null 2>&1; do
                   echo "Waiting for mariadb-0 to be ready..."
                   sleep 5
                 done
@@ -80,7 +86,7 @@ spec:
                 echo "mariadb-0 is ready, getting master status..."
                 
                 # 마스터 상태 가져오기
-                MASTER_STATUS=$(mysql -h mariadb-0.mariadb-headless -u root -proot -e "SHOW MASTER STATUS\G")
+                MASTER_STATUS=$(mysql -h mariadb-0.mariadb-headless -u root -p"${MARIADB_ROOT_PASSWORD}" -e "SHOW MASTER STATUS\G")
                 LOG_FILE=$(echo "$MASTER_STATUS" | grep "File:" | awk '{print $2}')
                 LOG_POS=$(echo "$MASTER_STATUS" | grep "Position:" | awk '{print $2}')
                 
@@ -88,9 +94,9 @@ spec:
                 echo "Master Log Position: $LOG_POS"
                 
                 # 02-salve.sql 주입
-                sed -e "s/\${LOG_FILE}/$LOG_FILE/g" \
-                    -e "s/\${LOG_POS}/$LOG_POS/g" \
-                    /mnt/sql/02-slave.sql > /mnt/sql/02-slave.sql
+                sed -e "s/${LOG_FILE}/$LOG_FILE/g" \
+                    -e "s/${LOG_POS}/$LOG_POS/g" \
+                    /mnt/sql/02-slave.sql > /mnt/sql/02-slave.sql.tmp && mv /mnt/sql/02-slave.sql.tmp /mnt/sql/02-slave.sql
                 
                 echo "Slave SQL file generated successfully"
               fi
