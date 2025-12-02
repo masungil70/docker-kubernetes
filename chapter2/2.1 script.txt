@@ -169,9 +169,9 @@ docker run -it --name volume_overide  \
 cd /home/testdir_2 
 
 
-#32. 볼륨 컨테이너 (--volume-from)
+#32. 볼륨 컨테이너 (--volumes-from)
 docker run -it --name volumes_from_container \
-   --volume-from volume_overide \
+   --volumes-from volume_overide \
    ubuntu:24.04
 #경로 변경
 ls /home/testdir_2
