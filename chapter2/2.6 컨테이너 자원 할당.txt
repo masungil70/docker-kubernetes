@@ -199,7 +199,7 @@ docker run -d --name cpuset_2 \
      이해할 수 있습니다.
 
   --cpu-quota
-   * 의미: --cpu-period 동안 컨테iner가 사용할 수 있는 CPU 시간을 나타냅니다.
+   * 의미: --cpu-period 동안 컨테이너가 사용할 수 있는 CPU 시간을 나타냅니다.
    * 단위: 마이크로초(µs).
    * 기본값: -1 (제한 없음).
    * 설명: 이 값은 --cpu-period 동안 컨테이너가 최대로 사용할 수 있는 CPU 시간의 총량입니다. 예를 들어,
