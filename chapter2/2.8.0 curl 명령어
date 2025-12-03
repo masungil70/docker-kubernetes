@@ -38,7 +38,7 @@
     192.168.160.129 example.com   
     192.168.160.129 private.example.com
 
-    사용되 않는 모든 Docker 자원을 삭제 한다 
+    사용되지 않는 모든 Docker 자원을 삭제 한다 
     docker system prune -a -f
 
     jdk 설치 
