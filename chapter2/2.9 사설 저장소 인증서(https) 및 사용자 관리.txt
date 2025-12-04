@@ -54,7 +54,7 @@ sudo apt install apache2-utils -y
 htpasswd -c htpasswd alicek106
 
 #생성된 계정과 비밀번호 파일을 certs 폴더로 이동 한다 
-mv htpasswd 
+mv htpasswd certs
 
 #certs/nginx 파일 생성 
 vi certs/nginx
