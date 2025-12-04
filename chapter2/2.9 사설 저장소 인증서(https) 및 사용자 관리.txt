@@ -107,7 +107,7 @@ docker ps -a
 
 #nginx와 myregistry 컨테이너가 정상이면 로그인을 진행한다 
 #현재 상태서는 오류 발생(docker에서 사설 인증서를 신뢰할 수 없다고 오류발생)
-docker login https:/192.168.1.3
+docker login https://192.168.1.3
 
 #사설 인증서를 인증서 목록에 복사하고 인증서를 업데이트 한다 
 sudo cp certs/ca.crt /usr/local/share/ca-certificates/
@@ -120,7 +120,7 @@ sudo service docker restart
 docker start nginx_frontend
 
 #로그인을 다시 해본다(경고가 있지만 성공함)
-docker login https:/192.168.1.3
+docker login https://192.168.1.3
 
 #docker 이미지 목록을 확인한다 
 docker images -a
