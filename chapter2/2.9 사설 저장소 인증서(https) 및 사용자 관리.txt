@@ -57,7 +57,7 @@ htpasswd -c htpasswd alicek106
 mv htpasswd certs
 
 #certs/nginx 파일 생성 
-vi certs/nginx
+vi certs/nginx.conf
 
 upstream docker-registry {
   server registry:5000;
