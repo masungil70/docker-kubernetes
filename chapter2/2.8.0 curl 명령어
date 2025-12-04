@@ -48,7 +48,21 @@
     git clone https://github.com/masungil70/curl-demo.git
     cd curl-demo
     chmod +x gradlew
-    ./gradlew bootBuildImage
+    ./gradlew build 
+
+    vi Dockerfile 
+# 빌드 스테이지
+FROM eclipse-temurin:17-jdk-jammy AS builder
+WORKDIR /app
+
+COPY build/libs/demo-0.0.1-SNAPSHOT.jar app.jar
+
+EXPOSE 8080
+ENTRYPOINT ["java", "-jar", "app.jar"]
+
+docker build -t demo:0.0.1-SNAPSHO .
+
+
     docker images 
     생성된 이미지 확인 후 컨테이너로 실행한다 
     docker run -d --name curl-demo -p 80:8080 demo:0.0.1-SNAPSHO
