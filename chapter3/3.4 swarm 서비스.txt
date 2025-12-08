@@ -161,7 +161,7 @@ import socket
 app = FastAPI(title="FastAPI Whoami")
 
 @app.get("/")
- async def read_root(request: Request):
+async def read_root(request: Request):
      """
      호스트 및 수신 요청에 대한 정보를 반환합니다.
      """
