@@ -168,6 +168,13 @@
    # 예상 출력:
    # Running app.sh...
    # Arguments: fixed-entrypoint-arg new-arg-from-cli
+
+   # 4. `docker run`에서 인자 전달 (ENTRYPOINT에 추가됨)
+   docker run --rm entrypoint-example echo "Hello from command line"
+   # 예상 출력:
+   # Running app.sh...
+   # Arguments: fixed-entrypoint-arg echo Hello from command line
+
   
   결론: docker run에서 전달한 new-arg-from-cli가 ENTRYPOINT에 지정된 ./app.sh fixed-entrypoint-arg의 파라미터로
   추가되었습니다. ENTRYPOINT 자체는 바뀌지 않았습니다.
