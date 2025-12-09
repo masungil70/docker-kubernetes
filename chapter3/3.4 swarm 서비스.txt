@@ -240,16 +240,19 @@ CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
       터미널에서 해당 디렉토리로 이동하여 다음 명령어를 실행하여 Docker 이미지를 빌드합니다.
       (여기서는 my-fastapi-whoami라는 태그를 사용합니다.)
 
-      docker build -t my-fastapi-whoami .
+      docker build -t masungil/my-fastapi-whoami .
+      docker push masungil/my-fastapi-whoami
 
    3. Docker Swarm 서비스 생성:
-      이제 이 이미지를 사용하여 Docker Swarm 서비스를 생성합니다. traefik/whoami 예제와 동일하게 3개의 복제본을 만들고, 클러스터의 8000번 포트를 컨테이너의 8000번 포트에 매핑합니다.
+      이제 이 이미지를 사용하여 Docker Swarm 서비스를 생성합니다. 예제는 복제본 3개을 만들고, 클러스터의 8000번 포트를 컨테이너의 8000번 포트에 매핑합니다.
 
       docker service create \
         --name my-fastapi-whoami-app \
         --publish published=8000,target=8000 \
         --replicas 3 \
-        my-fastapi-whoami
+        --with-registry-auth \
+        masungil/my-fastapi-whoami:latest
+
       주의: `--publish`의 `target` 포트는 Dockerfile에서 `EXPOSE`한 포트와 `CMD`에서 Uvicorn이 바인딩하는 포트(8000)와 일치해야 합니다.
 
    4. 서비스 상태 확인:
