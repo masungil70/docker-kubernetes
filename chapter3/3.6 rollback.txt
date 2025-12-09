@@ -73,6 +73,7 @@ Docker Swarm에서 롤백(Rollback)이란?
      --name my-app \
      --publish published=8000,target=8000 \
      --replicas 3 \
+     --with-registry-auth \
      masungil/my-fastapi-whoami:latest
 
   서비스가 정상적으로 실행 중인지 확인합니다:
