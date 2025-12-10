@@ -445,7 +445,7 @@ services:
 
   예제: 쿠버네티스 리소스 정의
 
-  하나의 app.yaml 파일에 웹 애플리케이션의 배포(Deployment)와 외부 노출(Service)을 함께
+  하나의 exam17.yaml 파일에 웹 애플리케이션의 배포(Deployment)와 외부 노출(Service)을 함께
   정의하는 예제입니다.
 vi exam17.yml
 # --- 첫 번째 문서 시작: Deployment 정의 ---
@@ -485,6 +485,6 @@ spec:
 ...
 # --- 문서의 끝 ---
 
-  이 파일을 kubectl apply -f app.yaml과 같이 실행하면, 쿠버네티스는 ---를 기준으로 파일을
+  이 파일을 kubectl apply -f exam17.yaml과 같이 실행하면, 쿠버네티스는 ---를 기준으로 파일을
   나누어 두 개의 리소스를 각각 생성합니다.
 
