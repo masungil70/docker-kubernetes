@@ -98,7 +98,15 @@ backend-1  | INFO:     172.22.0.1:49374 - "GET /db_check HTTP/1.1" 200 OK
 
    1. 터미널에서 env_example_step2 디렉터리로 이동합니다.
       cd env_example_step2
-      
+
+      vi .env
+      DB_HOST=db
+      DB_NAME=kosa_db
+      DB_USER=kosa
+      DB_PASSWORD=1004
+      DB_ROOT_PASSWORD=1004
+
+
    2. docker compose up --build 명령어를 실행합니다.
    
    3. 웹 브라우저나 새로운 터미널에서 curl을 사용하여 http://localhost:8001/db_check에 접속하면 
