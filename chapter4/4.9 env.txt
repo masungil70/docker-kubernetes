@@ -255,7 +255,7 @@ backend-1  | INFO:     172.22.0.1:49374 - "GET /db_check HTTP/1.1" 200 OK
 
   프로젝트 구조
 
-   ──env_example_step4/
+   ──env_example_step5/
      ├───.env                # 개발용 환경 변수
      ├───.env.prod           # 프로덕션용 환경 변수
      ├───.gitignore          # 
