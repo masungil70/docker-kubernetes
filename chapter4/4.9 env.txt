@@ -326,7 +326,7 @@ backend-1  | INFO:     172.22.0.1:49374 - "GET /db_check HTTP/1.1" 200 OK
   프로덕션 서버에 배포할 때는 아래와 같이 명시적으로 파일을 지정해야 합니다.
 
    # /env_example_advanced 디렉터리에서 실행
-   docker compose-f docker-compose.yml -f docker-compose.prod.yml --env-file .env.prod up -d --build
+   docker compose -f docker-compose.yml -f docker-compose.prod.yml --env-file .env.prod up -d --build
 
    * 작동 원리:
        * -f docker-compose.yml: 기본 설정을 로드합니다.
