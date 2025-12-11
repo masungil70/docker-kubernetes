@@ -493,7 +493,7 @@ configs:
 -------------------------------------------------------------------------  
    
    다음과 같이 실행하시고 로그를 확인해 보시면 정상적으로 각 노드에서 실행되는 것을 확인 할 수 있습니다  
-       docker stack deploy -c docker-compose.yml myappstack
+       docker stack deploy --with-registry-auth -c docker-compose.yml myappstack
        docker stack ps myappstack
 
   6단계: Stack 운영 및 관리
