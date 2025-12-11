@@ -23,11 +23,11 @@ if [ "$SWARM_STATUS" != "active" ]; then
     echo "'docker swarm init' 명령어를 사용하여 먼저 Swarm을 활성화하세요."
     exit 1
 fi
-echo -e "[1/4] ${GREEN}Docker Swarm 모드가 활성화되어 있습니다.${NC}"
+echo -e "[1/5] ${GREEN}Docker Swarm 모드가 활성화되어 있습니다.${NC}"
 
 # --- 2. Docker Secret 생성 (기존에 없다면) ---
 echo
-echo "[2/4] 데이터베이스 비밀번호용 Secret을 확인 및 생성합니다."
+echo "[2/5] 데이터베이스 비밀번호용 Secret을 확인 및 생성합니다."
 if ! docker secret inspect db_root_password > /dev/null 2>&1; then
     echo " - Secret이 없으므로 새로 생성합니다."
     read -sp '   - DB Root 비밀번호를 입력하세요: ' DB_ROOT_PASSWORD
@@ -41,13 +41,25 @@ else
     echo -e " - ${GREEN}기존 Secret('db_root_password', 'db_password')을 사용합니다.${NC}"
 fi
 
-# --- 3. Backend 이미지 빌드 확인 ---
+# --- 3. Docker config 생성 (기존에 없다면) ---
+echo
+echo "[3/5] config 확인 및 생성합니다."
+if ! docker config inspect nginx_config > /dev/null 2>&1; then
+    echo " - nginx config가 없으므로 새로 생성합니다."
+    docker config create nginx_config ./nginx/nginx.conf
+    docker config create frontend_index_html ./frontend/index.html
+    echo -e "     -> ${GREEN}'nginx_config' config를 생성했습니다.${NC}"
+else
+    echo -e " - ${GREEN}기존 config 을 사용합니다.${NC}"
+fi
+
+# --- 4. Backend 이미지 빌드 확인 ---
 if [ -f .env ]; then
     export $(cat .env | sed 's/#.*//g' | xargs)
 fi
 BACKEND_DEV_IMAGE=${BACKEND_IMAGE_DEV:-my-backend:dev}
 echo
-echo "[3/4] Backend 이미지 준비 확인"
+echo "[4/5] Backend 이미지 준비 확인"
 echo
 echo -e "${YELLOW}============================ 중요 ============================${NC}"
 echo
@@ -62,9 +74,9 @@ echo
 echo -e "${YELLOW}==============================================================${NC}"
 read -p "준비가 완료되었다면 Enter 키를 눌러 계속 진행하세요..."
 
-# --- 4. 개발용 애플리케이션 스택 배포 ---
+# --- 5. 개발용 애플리케이션 스택 배포 ---
 echo
-echo "[4/4] 개발용 애플리케이션 스택을 배포합니다..."
+echo "[5/5] 개발용 애플리케이션 스택을 배포합니다..."
 docker stack deploy -c docker-stack.dev.yml dev_stack
 echo -e "     -> ${GREEN}'dev_stack' 배포를 시작했습니다.${NC}"
 

@@ -48,10 +48,10 @@ services:
     # 이는 개발 생산성을 크게 향상시킵니다.
     command: sh -c "uvicorn main:app --host 0.0.0.0 --port 8000 --reload"
     # 'volumes': 로컬 소스 코드를 컨테이너에 직접 마운트하여 실시간 동기화합니다.
-    volumes:
+    #volumes:
       # 로컬의 './backend' 디렉토리를 컨테이너의 '/app' 디렉토리로 마운트합니다.
       # 로컬에서 코드를 수정하면 즉시 컨테이너 내부에 반영됩니다.
-      - ./backend:/app
+      #- ./backend:/app
     # 'environment': 백엔드 애플리케이션에 필요한 환경 변수를 설정합니다.
     environment:
       DB_HOST: db # 데이터베이스 호스트 이름 (같은 네트워크의 'db' 서비스)
@@ -82,12 +82,13 @@ services:
       # 개발 환경에서는 보통 다른 서비스(예: 로컬 웹서버)가 80 포트를 사용할 수 있으므로,
       # 충돌을 피하기 위해 8080 같은 다른 포트를 사용합니다.
       - "8080:80"
-    # 'volumes': 로컬의 설정 파일과 프론트엔드 파일을 컨테이너에 마운트합니다.
-    volumes:
-      # 로컬의 'nginx.conf' 파일을 컨테이너의 설정 파일 경로에 읽기 전용(:ro)으로 마운트합니다.
-      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
-      # 로컬의 'frontend' 디렉토리를 Nginx가 정적 파일을 제공하는 기본 경로에 읽기 전용으로 마운트합니다.
-      - ./frontend:/usr/share/nginx/html:ro
+    # 'configs': 로컬의 설정 파일과 프론트엔드 파일을 컨테이너에 마운트합니다.
+    configs:
+      - source: nginx_config
+        target: /etc/nginx/conf.d/default.conf
+      - source: frontend_index_html
+        target: /usr/share/nginx/html/index.html
+
     # 'networks': 다른 서비스들과 통신하기 위해 'dev-net'에 연결합니다.
     networks:
       - dev-net
@@ -121,3 +122,9 @@ networks:
     # 오버레이 네트워크를 사용하도록 드라이버를 지정합니다.
     # 단일 호스트에서 docker-compose로 실행할 때는 'bridge' 드라이버와 유사하게 동작합니다.
     driver: overlay
+
+configs:
+  nginx_config:
+    external: true
+  frontend_index_html:
+    external: true
