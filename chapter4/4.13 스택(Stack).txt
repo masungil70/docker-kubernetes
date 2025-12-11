@@ -659,7 +659,7 @@ docker stack deploy --with-registry-auth -c docker-compose-rolling-update.yml my
 chmod +x *.sh 
 
 #stack 배포 실행하는 스크립트 파일을 실행 합니다 
-./run.sh 
+./stack-run.sh 
 
 #서버 URL 테스트 실행
 ./run-test.sh 
