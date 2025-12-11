@@ -527,7 +527,7 @@ verify: Service myappstack_web converged
   방법 2: `docker-compose.yml` 파일 수정 후 재배포 (영구 변경)
   docker-compose.yml 파일에서 web 서비스의 replicas 값을 3에서 5로 변경한 후, 다음 명령어를 다시 실행합니다.
       
-      docker stack deploy -c docker-compose.yml myappstack
+      docker stack deploy --with-registry-auth  -c docker-compose.yml myappstack
       
   이 방법은 docker-compose.yml 파일에 변경 사항을 영구적으로 반영하고, Stack을 업데이트하여 변경된
   레플리카 수에 맞춰 컨테이너를 조정합니다.
@@ -576,7 +576,7 @@ done
 vi stack-run.sh
 #!/bin/bash
 # 스택 배포
-docker stack deploy -c docker-compose.yml myappstack
+docker stack deploy --with-registry-auth -c docker-compose.yml myappstack
 
 --------------------------------------------------------
 
@@ -650,7 +650,7 @@ configs:
 vi stack-run-2.0.sh
 #!/bin/bash
 # 스택 배포
-docker stack deploy -c docker-compose-rolling-update.yml myappstack
+docker stack deploy --with-registry-auth -c docker-compose-rolling-update.yml myappstack
 
 
 --------------------------------------------------------
@@ -861,7 +861,7 @@ configs:
 vi stack-run-2.0.sh
 #!/bin/bash
 # 스택 배포
-docker stack deploy -c docker-compose-unhealthy-rollback.yml myappstack
+docker stack deploy --with-registry-auth  -c docker-compose-unhealthy-rollback.yml myappstack
 
 --------------------------------------------------------
 
