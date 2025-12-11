@@ -20,8 +20,7 @@
 
    - `docker-compose.yml`: 스택의 설계도 또는 정의 파일입니다. 어떤 서비스들이 있고, 각 서비스는 어떤
      이미지를 사용하며, 어떻게 연결되는지 등을 정의합니다.
-   - `docker-compose up`: 단일 Docker 호스트(내 PC 등)에서 docker-compose.yml에 정의된 컨테iner를
-     실행합니다. 주로 개발 환경에서 사용합니다.
+   - `docker compose up`: 단일 Docker 호스트(내 PC 등)에서 docker-compose.yml에 정의된 컨테이너를 실행합니다. 주로 개발 환경에서 사용합니다.
    - `docker stack deploy`: Docker Swarm 클러스터에 docker-compose.yml 파일을 기반으로 스택을 배포합니다.
      여러 서버에 걸쳐 서비스를 분산 실행하고 관리할 수 있게 해줍니다. 주로 운영(Production) 환경에서
      사용합니다.
