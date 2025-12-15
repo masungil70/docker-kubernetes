@@ -29,6 +29,13 @@ echo  -e "\n다음에 로그인시 실행될 수 있도록 .bashrc 맨 마지막
 echo "source <(kubectl completion bash)" >> .bashrc
 echo "source <(kubeadm completion bash)" >> .bashrc
 
+#로그아웃 하지 않고 .bashrc 파일 적용하는 방법 
+```
+. .bashrc 
+또는 
+source .bashrc
+```
+
 #엔진X 웹서버 설치 후 확인
 echo  -e "\n엔진X 웹서버 설치 후 확인"
 kubectl run webserver --image=nginx
