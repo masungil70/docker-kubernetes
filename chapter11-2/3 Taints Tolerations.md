@@ -53,14 +53,14 @@
   4. Tolerations(톨러레이션)의 작동 방식
 
   톨러레이션은 파드 정의의 spec.tolerations 필드에 배열 형태로 정의됩니다.
-
+```
    1 tolerations:
    2 - key: "key"
    3   operator: "Equal" # 또는 "Exists"
    4   value: "value"    # operator가 "Exists"일 경우 생략 가능
    5   effect: "NoSchedule" # 또는 "NoExecute", "PreferNoSchedule"
    6   tolerationSeconds: 3600 # effect가 NoExecute일 경우, 축출 유예 시간 (초)
-
+```
    * `key`: 허용할 테인트의 키.
    * `operator`:
        * `Equal`: key와 value가 정확히 일치하는 테인트를 허용합니다. (기본값)
