@@ -130,6 +130,25 @@ spec:
 # 1. Metrics Server가 설치되어 있는지 확인 (설치되어 있지 않다면 설치 필요)
 # kubectl get apiservice v1beta1.metrics.k8s.io -o yaml
 
+# 1-2. Metrics Server가 설치
+# kubectl apply -f https://github.com/kubernetes-sigs/metrics-server/releases/latest/download/components.yaml
+
+# 1-3. Metrics Server 설치 확인
+# kubectl get pods -n kube-system | grep metrics-server
+
+# 1-4 https 보안 문제로 실행시 오류 발생 metrics-server Deployment 아래와 같이 수정
+# kubectl edit deployment metrics-server -n kube-system
+# args 부분을 확인하고 아래와 같이 수정하고 저장 합니다. 잠시 후 Metrics Server 설치 확인을 다시 해봅니다 
+# args:
+#  - --cert-dir=/tmp
+#  - --secure-port=10250
+#  - --kubelet-preferred-address-types=InternalIP,ExternalIP,Hostname
+#  - --kubelet-use-node-status-port
+#  - --metric-resolution=15s
+#  - --kubelet-insecure-tls
+#
+
+
 # 2. Deployment 배포
 kubectl apply -f my-app-deployment.yaml
 
