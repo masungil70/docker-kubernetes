@@ -166,7 +166,7 @@ kubectl describe hpa my-app-hpa
 
   5. HPA 스케일링 테스트 (CPU 부하 유발)
 
-  my-app-deployment내부에 았는 파드를 사용하여 my-app-deployment에 CPU 부하를 유발할 수 있습니다.
+  my-app-deployment내부에 있는 파드를 사용하여 CPU 부하를 유발할 수 있습니다.
 ```
 # 부하를 유발할 파드 생성 (my-app-service가 있다고 가정)
 kubectl exec -it  my-app-deployment-xxxx-xxxx -- /bin/sh
