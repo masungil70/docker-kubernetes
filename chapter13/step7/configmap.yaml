@@ -14,8 +14,10 @@ data:
   # 서버 아이디 부여
   slave.cnf: |
     [mysqld]
-    server-id = 2
-
+    server-id = ${SERVER_ID}
+    relay-log=relay-bin
+    read_only=ON
+  
 ---
 apiVersion: v1
 kind: ConfigMap
@@ -46,10 +48,15 @@ data:
 
   # 슬레이브에 마스터 등록 template / init-conatiner에서 master정보 입력 예정
   02-slave.sql: |
-    RESET REPLICA;
+    STOP SLAVE;
     CHANGE MASTER TO
     MASTER_HOST= 'mariadb-0.mariadb-headless',
     MASTER_USER= 'repl_user', -- Todo: 아이디 하드코딩 나중에 바꾸기
     MASTER_PASSWORD= 'repl', -- Todo: 비밀번호 하드코딩 나중에 바꾸기
     MASTER_LOG_FILE= '${LOG_FILE}',
-    MASTER_LOG_POS= ${LOG_POS};
+    MASTER_LOG_POS= ${LOG_POS},
+    MASTER_SSL=0;
+    START SLAVE;
+
+    
+        

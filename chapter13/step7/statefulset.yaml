@@ -57,7 +57,10 @@ spec:
               # 현재 생성 중인 pod 이름 확인
               POD_NAME=$(hostname)
               POD_INDEX=${POD_NAME##*-}
-              echo "Current pod index is: $POD_INDEX"
+
+              #서버의 고유 ID 설정 (1부터 시작)
+              SERVER_ID=$((POD_INDEX + 1))
+              echo "Current pod index is: $POD_INDEX   server-id: $SERVER_ID"
 
               # DB공통 init-sql 복사(01-common.sql)
               cp /mnt/init.sql/01-common.sql /mnt/sql/01-common.sql
@@ -70,8 +73,14 @@ spec:
                 echo "Master configuration completed"
                 exit 0
               else
+
                 cp /mnt/init.cnf/slave.cnf /mnt/cnf/slave.cnf
                 cp /mnt/init.sql/02-slave.sql /mnt/sql/02-slave.sql
+
+                # slave.cnf 파일의 서버아이디 수정
+                sed -e "s/\${SERVER_ID}/$SERVER_ID/g" \
+                    /mnt/cnf/slave.cnf > /mnt/cnf/slave.cnf.tmp && mv /mnt/cnf/slave.cnf.tmp /mnt/cnf/slave.cnf
+
                 echo "Slave configuration will continue..."
               fi
 
@@ -92,12 +101,15 @@ spec:
                 
                 echo "Master Log File: $LOG_FILE"
                 echo "Master Log Position: $LOG_POS"
+
+                # 02-slave.sql 주입
+                sed -e "s/\${LOG_FILE}/$LOG_FILE/g" \
+                    -e "s/\${LOG_POS}/$LOG_POS/g" \
+                    /mnt/sql/02-slave.sql >> /mnt/sql/01-common.sql
                 
-                # 02-salve.sql 주입
-                sed -e "s/${LOG_FILE}/$LOG_FILE/g" \
-                    -e "s/${LOG_POS}/$LOG_POS/g" \
-                    /mnt/sql/02-slave.sql > /mnt/sql/02-slave.sql.tmp && mv /mnt/sql/02-slave.sql.tmp /mnt/sql/02-slave.sql
-                
+                cat  /mnt/sql/01-common.sql
+                rm   /mnt/sql/02-slave.sql
+
                 echo "Slave SQL file generated successfully"
               fi
 
