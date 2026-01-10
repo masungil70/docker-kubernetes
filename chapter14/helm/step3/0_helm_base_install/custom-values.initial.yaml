@@ -16,6 +16,7 @@ grafana:
     type: NodePort
 
 prometheus:
+  enabled: true
   prometheusSpec:
     # 프로메테우스 데이터 영구 저장을 위한 설정
     storageSpec:

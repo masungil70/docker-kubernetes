@@ -16,7 +16,15 @@ grafana:
     type: NodePort
 
 prometheus:
+  enabled: true
   prometheusSpec:
+    replicas: 1
+
+    serviceMonitorSelectorNilUsesHelmValues: false
+    podMonitorSelectorNilUsesHelmValues: false
+    ruleSelectorNilUsesHelmValues: false
+
+    retention: 10d  
     # 프로메테우스 데이터 영구 저장을 위한 설정
     storageSpec:
       volumeClaimTemplate:

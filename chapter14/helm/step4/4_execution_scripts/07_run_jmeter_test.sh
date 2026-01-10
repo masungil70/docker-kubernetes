@@ -4,6 +4,7 @@
 
 # --- 변수 설정 ---
 # JMETER_HOME 변수가 설정되어 있지 않다면, JMeter가 설치된 경로를 직접 지정하세요.
+# 
 JMETER_BIN="${JMETER_HOME}/bin"
 TEST_PLAN_PATH="../3_jmeter_test/CalculatorTest.jmx"
 RESULT_FILE="../3_jmeter_test/result.jtl"
