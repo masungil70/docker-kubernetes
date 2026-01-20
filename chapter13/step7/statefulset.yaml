@@ -94,10 +94,12 @@ spec:
                 echo "Master Log Position: $LOG_POS"
                 
                 # 02-salve.sql 주입
-                sed -e "s/${LOG_FILE}/$LOG_FILE/g" \
-                    -e "s/${LOG_POS}/$LOG_POS/g" \
+                sed -e "s/\${LOG_FILE}/$LOG_FILE/g" \
+                    -e "s/\${LOG_POS}/$LOG_POS/g" \
                     /mnt/sql/02-slave.sql > /mnt/sql/02-slave.sql.tmp && mv /mnt/sql/02-slave.sql.tmp /mnt/sql/02-slave.sql
                 
+                cat  /mnt/sql/02-slave.sql
+
                 echo "Slave SQL file generated successfully"
               fi
 

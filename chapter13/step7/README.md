@@ -46,6 +46,24 @@
     kubectl apply -f services.yaml
     kubectl apply -f statefulset.yaml
 
+    
+    각 mariadb slave pod 에 접속하여 기존 SLAVE 멤추고 다시 시작을 한다.
+
+    kubectl exec -it mariadb-1 -- bash
+    mariadb -u root -p 
+
+    STOP SLAVE;
+    START SLAVE;
+    exit;
+
+
+    kubectl exec -it mariadb-2 -- bash
+    mariadb -u root -p 
+
+    STOP SLAVE;
+    START SLAVE;
+    exit;
+
 
     # 3. (중요) api-deployment.yaml 파일의 image 필드를 1단계에서 푸시한 이미지 이름으로 수정합니다.
     # 예: image: <your-dockerhub-username>/fastapi-item-api:latest
