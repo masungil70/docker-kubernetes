@@ -1,0 +1,10 @@
+apiVersion: metallb.io/v1beta1
+kind: IPAddressPool
+metadata:
+  name: first-pool
+  namespace: metallb-system
+spec:
+  addresses:
+  - 192.168.80.10-192.168.80.20 # 자신의 네트워크 환경에 맞는 IP 대역 입력, DHCP 서버에 발급되는 IP 대역제외 해주세요 
+
+

@@ -1,0 +1,10 @@
+apiVersion: metallb.io/v1beta1
+kind: L2Advertisement
+metadata:
+  name: l2-adv
+  namespace: metallb-system
+spec:
+  ipAddressPools:
+  - first-pool # 위에서 만든 풀 이름을 지정
+
+
