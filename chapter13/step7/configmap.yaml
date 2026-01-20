@@ -14,7 +14,7 @@ data:
   # 서버 아이디 부여
   slave.cnf: |
     [mysqld]
-    server-id = 2
+    server-id = ${SERVER_ID}
     relay-log=relay-bin
     read_only=ON
   
