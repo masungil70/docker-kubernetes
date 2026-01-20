@@ -13,3 +13,224 @@
   수평적으로 확장을 하는 방법은 정적과 동적으로 구분할 수 있습니다 
   정적 : replicas
   동적 : scale 
+
+---
+
+Docker 환경에서 **HAProxy**와 **Keepalived**를 조합하여 고가용성(HA) 환경을 구축하는 것은 서비스 중단 없는 인프라를 만드는 표준적인 방법 중 하나입니다.
+
+이 구조의 핵심은 **"로드 밸런싱(HAProxy)"**과 **"장애 조치(Keepalived)"**의 결합입니다.
+
+---
+
+## 1. 주요 구성 요소의 역할
+
+### HAProxy (Load Balancer)
+
+* **역할:** 여러 대의 백엔드 서버(Docker 컨테이너 등)로 트래픽을 분산합니다.
+* **기능:** L4(TCP) 및 L7(HTTP) 부하 분산, 헬스 체크(Health Check)를 통한 정상 서버 선별.
+
+### Keepalived (High Availability)
+
+* **역할:** 로드 밸런서 자체에 장애가 발생했을 때를 대비한 이중화 도구입니다.
+* **기능:** **VIP(Virtual IP)**를 관리하며, 마스터 서버에 문제가 생기면 백업 서버로 VIP를 즉시 이동시킵니다(Failover).
+* **프로토콜:** VRRP(Virtual Router Redundancy Protocol)를 사용하여 서버 간 상태를 감시합니다.
+
+---
+
+## 2. 전체 아키텍처 구조
+
+사용자는 개별 서버의 IP가 아닌 하나의 **가상 IP(VIP)**로 접속하게 됩니다.
+
+1. **평상시:** VIP는 Master 노드에 할당되어 있으며, 트래픽은 `VIP -> Master HAProxy -> Backend` 순으로 흐릅니다.
+2. **장애 발생:** Master 노드의 하드웨어나 Keepalived 프로세스에 문제가 생기면, Backup 노드가 이를 감지합니다.
+3. **Failover:** VIP가 Backup 노드로 자동 이동하며, 이후 트래픽은 `VIP -> Backup HAProxy -> Backend`로 흐르게 됩니다.
+
+---
+
+## 3. Docker를 이용한 구축 단계
+
+### Step 1: 가상머신 목록
+
+|서버| IP |
+|---|---|
+|web server | 192.168.217.128|
+|LB1 | 192.168.217.131|
+|LB2 | 192.168.217.132|
+
+### Step 2: Nginx 컨테이너 설정 (192.168.217.128)
+
+web server에 nginx 두개를 컨테이너로 구동합니다 
+```bash
+vi docker-compose.yml
+```
+
+```yaml
+#docker-compose.yml
+#version: '3.8'
+
+services:
+  # 테스트용 백엔드 서버 (2대)
+  web1:
+    image: nginx:alpine
+    ports:
+      - "8081:80"  # 호스트의 8081로 접속 가능하게
+  web2:
+    image: nginx:alpine
+    ports:
+      - "8082:80"  # 호스트의 8082로 접속 가능하게
+```
+
+---
+
+
+### Step 3: HAProxy 설정 ( 192.168.217.131, 192.168.217.132 서버에 각각 파일 작성해야합니다)
+
+각 노드에 `haproxy.cfg` 파일을 작성하여 백엔드 서버들을 지정합니다.
+
+```haproxy
+frontend http-in
+    bind *:80
+    default_backend webservers
+
+backend webservers
+    balance roundrobin
+    server server1 192.168.217.128:8081 check
+    server server2 192.168.217.128:8082 check
+```
+
+### Step 4: Docker Compose로 실행
+
+두 대의 서버(Node 1, Node 2)에 각각 HAProxy 컨테이너를 띄웁니다.
+
+```yaml
+#lb1/docker-compose.yml (192.168.217.131 서버에 파일 작성해야합니다)
+#version: '3.8'
+
+services:
+  # HAProxy + Keepalived 노드 1 (MASTER)
+  lb1:
+    image: adrianlzt/haproxy-keepalived # HAProxy와 Keepalived가 포함된 이미지 사용 권장
+    cap_add:
+      - NET_ADMIN
+      - NET_RAW
+    network_mode: "host" # VIP 할당을 위해 호스트 네트워크 모드 권장
+    environment:
+      - VIP=192.168.217.100 # 테스트할 가상 IP
+      - PRIORITY=150      # MASTER용 높은 우선순위
+      - IFACE=ens33   # 실제 사용 중인 인터페이스명
+    volumes:
+      - ./haproxy.cfg:/etc/haproxy/haproxy.cfg:ro
+```
+
+---
+
+```
+#lb2/docker-compose.yml (192.168.217.132 서버에 파일 작성해야합니다) 
+#version: '3.8'
+
+services:
+  # HAProxy + Keepalived 노드 2 (MASTER)
+  lb1:
+    image: adrianlzt/haproxy-keepalived # HAProxy와 Keepalived가 포함된 이미지 사용 권장
+    cap_add:
+      - NET_ADMIN
+      - NET_RAW
+    network_mode: "host" # VIP 할당을 위해 호스트 네트워크 모드 권장
+    environment:
+      - VIP=192.168.217.100 # 테스트할 가상 IP
+      - PRIORITY=100      # Backup용 낮은 우선순위
+      - IFACE=ens33   # 실제 사용 중인 인터페이스명
+    volumes:
+      - ./haproxy.cfg:/etc/haproxy/haproxy.cfg:ro
+```
+---
+
+
+### Step 5: Docker Compose로 실행
+
+192.168.217.128 서버에서 실행 
+```bash
+# nginx 두개의 서버를 실행 
+docker compose up -d 
+
+# 실행 로그 확인 
+docker compose logs 
+
+```
+
+---
+
+192.168.217.131 서버에서 실행 
+```bash
+# HAProxy/keepalived 서버를 실행 
+docker compose up -d 
+
+# 실행 로그 확인 
+docker compose logs 
+
+```
+
+---
+
+192.168.217.132 서버에서 실행 
+```bash
+# HAProxy/keepalived 서버를 실행 
+docker compose up -d 
+
+# 실행 로그 확인 
+docker compose logs 
+
+```
+
+---
+
+192.168.217.0/24의 주소 대역에서 실행을 합니다 
+
+```bash
+# nginx 실행결과 출력됩니다 
+curl 192.168.217.100 
+
+```
+
+
+192.168.217.131 Master 서버에서  HAProxy/keepalived 을 종료합니다 
+```
+docker compose down 
+
+```
+
+
+192.168.217.0/24의 주소 대역에서 실행을 합니다 
+
+```bash
+# nginx 실행결과 출력됩니다 
+curl 192.168.217.100 
+
+```
+
+192.168.217.128 서버에서 web1 서비스를 종료를 합니다  
+```
+docker compose down web1 
+
+```
+다시 웹서버를 실행합니다 
+```bash
+# nginx 실행결과 출력됩니다 
+curl 192.168.217.100 
+
+```
+
+
+## 4. 이 구조의 장점
+
+* **단일 장애점(SPOF) 제거:** 로드 밸런서 자체가 죽더라도 서비스가 유지됩니다.
+* **유연한 확장성:** Docker를 사용하므로 설정 변경 및 배포가 매우 빠릅니다.
+* **투명성:** 사용자는 서버 장애 여부를 모른 채 동일한 VIP로 계속 접속할 수 있습니다.
+
+---
+
+## 5. 주의사항
+
+1. **네트워크 모드:** Keepalived는 VIP를 호스트 네트워크 인터페이스에 할당해야 하므로 반드시 `network_mode: host`를 사용해야 합니다.
+2. **PRIORITY:** MASTER용 일 경우 높은 값을 설정, BACKUP일 경우 MASTER용 보다는 낮은 갓을 설정합니다 
+3. **IFACE:** host 장비의 nic 이름 : ip a로 이름 확인 가능합니다 
