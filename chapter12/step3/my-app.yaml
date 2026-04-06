@@ -1,0 +1,15 @@
+# my-app.yaml: 'Greeting' 커스텀 리소스의 실제 인스턴스(객체)를 정의합니다.
+# 이 파일은 'Greeting' CRD에 정의된 스키마를 따르는 데이터 객체입니다.
+apiVersion: kosa.go.kr/v1
+kind: AppDeploy
+metadata:
+  name: hello-app
+spec:
+  image: nginx:1.27
+  replicas: 1
+  port: 80
+  autoscaling:
+    enabled: true
+    min: 1
+    max: 10
+    cpu: 60

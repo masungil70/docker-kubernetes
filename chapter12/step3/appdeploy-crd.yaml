@@ -1,0 +1,62 @@
+# greeting-crd.yaml: 'Greeting'이라는 새로운 커스텀 리소스(Custom Resource)를 쿠버네티스에 정의합니다.
+# 이 파일은 클러스터에 새로운 API 오브젝트 타입을 등록하는 역할을 합니다.
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  # CRD의 이름은 항상 '복수형.그룹명' 형식입니다.
+  name: appdeploys.kosa.go.kr
+spec:
+  # 이 CRD가 속할 API 그룹입니다. (예: 'kosa.go.kr/v1' API)
+  group: kosa.go.kr
+  versions:
+    - name: v1 # API 버전 (예: v1alpha1, v1beta1, v1)
+      served: true # 이 버전의 API를 제공할 것인지 여부
+      storage: true # 이 버전이 기본 저장 버전인지 여부 (여러 버전이 있을 경우)
+      # status 서브리소스를 활성화합니다.
+      subresources:
+        status: {}
+      schema:
+        openAPIV3Schema:
+          type: object
+          properties:
+            spec:
+              type: object
+              required:
+                - image
+              properties:
+                image:
+                  type: string
+                replicas:
+                  type: integer
+                  default: 1
+                port:
+                  type: integer
+                  default: 8080
+                cpu:
+                  type: string
+                  description: "CPU request value (millicores, e.g. 100)"
+                memory:
+                  type: string
+                  description: "Memory request value (Mi, e.g. 128)"
+                autoscaling:
+                  type: object
+                  properties:
+                    enabled:
+                      type: boolean
+                    min:
+                      type: integer
+                    max:
+                      type: integer
+                    cpu:
+                      type: integer
+            status:
+              type: object
+              properties:
+                availableReplicas:
+                  type: integer
+  scope: Namespaced # 이 리소스는 특정 네임스페이스에 속합니다. (Cluster-scoped도 가능)
+  names:
+    plural: appdeploys # 복수형 이름 (kubectl get appdeploys)
+    singular: appdeploy # 단수형 이름 (kubectl get appdeploy)
+    kind: AppDeploy # 리소스의 종류 (kind: AppDeploy)
+    shortNames: ["appd"] # 짧은 이름 (kubectl get appd)
