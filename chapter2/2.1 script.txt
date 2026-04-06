@@ -292,7 +292,7 @@ docker run -it --name network_host \
   ubuntu:24.04
 
 #63. 컨터이너 네트웩(컨터이너에서 사용하는 네트웩을 다른 컨터이너에서 공유함)
-docker run -d --name network_conainer_1 ubuntu:24.04
+docker run -it --name network_conainer_1 ubuntu:24.04
 
 docker run -it --name network_conainer_2 \
   --net container:network_conainer_1 \
