@@ -8,5 +8,5 @@ docker rm nginx api-1 api-2 api-3
 docker network rm my-net
 
 # backend 이미지 제거 
-docker rmi backend:0.1
+docker rmi backend:1.0
 
