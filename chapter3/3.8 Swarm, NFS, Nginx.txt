@@ -284,26 +284,14 @@ server-b, server-c에서 했던 것과 완벽히 동일한 작업을 server-d에
 새 노드가 추가된 후 Docker Swarm이 어떻게 반응하는지 확인합니다.
 
  1. 노드 목록 확인 (`server-a` 마스터 노드에서 실행)
-  docker node ls
+ 
+    docker node ls
 
     server-d가 목록에 Ready 상태로 추가된 것을 볼 수 있습니다.
 
  2. 서비스 상태 확인 (`server-a` 마스터 노드에서 실행)
     이제 가장 흥미로운 부분입니다. my-nginx 서비스의 상태를 다시 확인해 보세요.
- 1     docker service ps my-nginx
-    어떤 일이 일어날까요?
+ 
+    docker service ps my-nginx
 
-    Docker Swarm은 항상 "원하는 상태"를 유지하려고 합니다. 
-    현재 my-nginx 서비스의 "원하는 상태"는 4개의 복제본을 최대한 여러 노드에 분산하여 실행하는 것입니다.
-
-     * 이전 상태: 4개의 컨테이너가 3개의 노드에 분산 (예: server-a에 1개, server-b에 2개,
-       server-c에 1개)
-     * 새로운 상황: 비어있는 server-d가 클러스터에 추가됨.
-
-    Swarm 매니저는 이 상황을 인지하고, 더 균등한 분배를 위해 자동으로 서비스를 재조정합니다.
-즉, 2개의 컨테이너가 실행 중이던 노드(예: server-b)에서 컨테이너 하나를 종료(Shutdown)하고,
-새로운 노드인 server-d에 컨테이너를 생성(Running)하여 1-1-1-1 분포를 맞춥니다.
-
-    위와 같이, 기존 노드에서 실행되던 태스크 하나가 Shutdown되고, 새로운 server-d에 새
-태스크가 Running 상태가 된 것을 확인할 수 있습니다.
-
+    노드 추가가 발생 해도 실행중인 컨테이너의 위치 변화는 발생하지 않습니다 
