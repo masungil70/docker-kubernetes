@@ -180,9 +180,13 @@ backend-1  | INFO:     172.22.0.1:49374 - "GET /db_check HTTP/1.1" 200 OK
   실행 방법
 
    1. 터미널에서 env_example_step3 디렉터리로 이동합니다.
-   2. docker compose up --build 명령어를 실행합니다.
-   3. http://localhost:8002/db_check에 접속하여 결과를 확인합니다.
-   4. 각 컨케이너의 /run/secrets/ 폴더를 확인합니다 
+   2. cd secrets
+      docker secret create db_password db_password.txt
+      docker secret create root_db_password root_db_password.txt
+   3. cd ..
+   4. docker compose up --build 명령어를 실행합니다.
+   5. http://localhost:8002/db_check에 접속하여 결과를 확인합니다.
+   6. 각 컨케이너의 /run/secrets/ 폴더를 확인합니다 
       docker exec env_example_step3-backend-1 ls /run/secrets
       
       * db_password 파일 존재를 확인 합니다 
