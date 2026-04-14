@@ -332,9 +332,9 @@ services:
 
   4. 주요 Docker Compose 명령어
 
-   * `docker compose up -d `: 컨테이너를 생성하고 시작합니다(포그라운드 실행).
+   * `docker compose up  `: 컨테이너를 생성하고 시작합니다(포그라운드 실행).
    * `docker compose up -d `: 컨테이너를 백그라운드에서 생성하고 시작합니다.
-   * `docker compose up -d `: 컨테이너를 중지하고 삭제합니다. (-v 옵션을 추가하면
+   * `docker compose down`: 컨테이너를 중지하고 삭제합니다. (-v 옵션을 추가하면
      볼륨도 함께 삭제)
    * `docker compose ps`: 실행 중인 컨테이너 목록을 보여줍니다.
    * `docker compose logs`: 서비스의 로그를 출력합니다. (예: docker compose up -d
