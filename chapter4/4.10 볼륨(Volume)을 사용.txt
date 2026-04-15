@@ -294,7 +294,7 @@ volumes:
         화면을 새롭게 고치기 위해 F5를 눌러 실행하시면 아이템 목록이 출력됩니다 
       
     4. 이미지 재빌드 하는 것이 아닌 실행  
-      docker compose up -data
+      docker compose up -d 
       
     5. 서비스 종료 
       docker compose down  
