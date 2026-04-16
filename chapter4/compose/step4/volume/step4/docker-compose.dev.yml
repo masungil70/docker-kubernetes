@@ -11,7 +11,7 @@ services:
     volumes:
       # Nginx 설정 파일과 프론트엔드 소스 코드를 호스트와 동기화합니다.
       - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
-      - ./frontend:/usr/share/nginx/htm
+      - ./frontend:/usr/share/nginx/html
 
 # 개발 환경용 설정 파일입니다.
 volumes:
