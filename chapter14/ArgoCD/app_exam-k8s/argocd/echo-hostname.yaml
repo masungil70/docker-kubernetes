@@ -1,0 +1,22 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: echo-hostname
+  namespace: argocd
+
+spec:
+  project: default
+
+  source:
+    repoURL: https://github.com/masungil70/argocd_exam.git
+    targetRevision: main
+    path: app_exam-k8s/k8s   # 여기가 중요 (deployment 위치)
+
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: default
+
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true

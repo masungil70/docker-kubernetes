@@ -1,0 +1,16 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: echo-hostname-svc
+spec:
+  ports:
+    - name: web-port
+      port: 8080
+      targetPort: 8000  #echo-hostname 컨테이너의 포트를 의미한것 이며,
+  selector:
+    app: webserver    #echo-hostname-pod.yaml에서 정의한 echo-hostname 컨테이너의 레이블을 의미합니다.  
+                      #이 레이블을 가진 Pod로 요청을 전달합니다.
+                      #echo-hostname 컨테이너가 8000번 포트로 요청을 수신합니다.
+  
+  type: ClusterIP     #서비스가 클러스터 내부에서만 접근 가능하도록 설정합니다.
+

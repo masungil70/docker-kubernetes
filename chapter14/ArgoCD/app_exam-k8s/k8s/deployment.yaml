@@ -1,0 +1,23 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: hostname-deployment
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: webserver
+  template:
+    metadata:
+      name: my-webserver
+      labels:
+        app: webserver
+    spec:
+      imagePullSecrets:          #docker hub 관련 정보 추가
+      - name: dockerhub-secret #docker hub 관련 정보 추가
+      containers:
+      - name: my-webserver
+        image: masungil/echo-hostname:5735b94cb87b2e88cb9afd09db9573e415a65543
+        imagePullPolicy: Always
+        ports:
+        - containerPort: 8000
