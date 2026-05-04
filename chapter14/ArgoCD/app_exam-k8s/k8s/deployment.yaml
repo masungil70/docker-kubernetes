@@ -13,11 +13,9 @@ spec:
       labels:
         app: webserver
     spec:
-      imagePullSecrets:          #docker hub 관련 정보 추가
-      - name: dockerhub-secret #docker hub 관련 정보 추가
       containers:
       - name: my-webserver
-        image: masungil/echo-hostname:5735b94cb87b2e88cb9afd09db9573e415a65543
+        image: masungil/echo-hostname:dcca343ec38e88515f002a728154ed10401b6924
         imagePullPolicy: Always
         ports:
         - containerPort: 8000

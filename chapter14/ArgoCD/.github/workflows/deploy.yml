@@ -35,7 +35,6 @@ jobs:
 
     - name: Update Kubernetes manifest
       run: |
-        git clone https://github.com/masungil70/argocd_exam.git
         cd app_exam-k8s/k8s/
 
         sed -i "s|image:.*|image: $IMAGE_NAME:${{ github.sha }}|g" deployment.yaml
